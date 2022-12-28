@@ -37,6 +37,7 @@ type model struct {
 	width    int
 	height   int
 	footer   string
+	prev     tea.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -85,11 +86,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					newModel.height = m.height
 					newModel.width = m.width
+					newModel.prev = m
 					return *newModel, nil
 				}
 			}
 
 		case "left":
+			if m.prev != nil {
+				return m.prev, nil
+			}
 			a, _ := path.Split(m.folder)
 			if a != "/" {
 				a = strings.TrimSuffix(a, "/")
