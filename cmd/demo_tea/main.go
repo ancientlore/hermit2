@@ -6,10 +6,25 @@ import (
 	"log"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+const (
+	timeFormatOld = "Mo Jan _2  2006"
+	timeFormatNew = "Mo Jan _2 15:04"
+)
+
+var (
+	normal    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	highlight = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
+	header    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	footer    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	bold      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#AAAAAA"))
 )
 
 type model struct {
@@ -18,6 +33,10 @@ type model struct {
 	entries  []fs.DirEntry
 	selected []bool
 	cursor   int
+	offset   int
+	width    int
+	height   int
+	footer   string
 }
 
 func (m model) Init() tea.Cmd {
@@ -26,6 +45,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.footer = ""
 	switch msg := msg.(type) {
 
 	// Is it a key press?
@@ -55,8 +75,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if entry.IsDir() {
 				newModel, err := New(m.fsys, path.Join(m.folder, m.entries[m.cursor].Name()))
 				if err != nil {
-					//
+					m.footer = err.Error()
 				} else {
+					newModel.height = m.height
+					newModel.width = m.width
 					return *newModel, nil
 				}
 			}
@@ -71,6 +93,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					log.Print(err)
 				} else {
+					newModel.height = m.height
+					newModel.width = m.width
 					return *newModel, nil
 				}
 			}
@@ -88,6 +112,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		}
+
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -95,22 +124,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-const (
-	timeFormatOld = "Mo Jan _2  2006"
-	timeFormatNew = "Mo Jan _2 15:04"
-)
-
 func (m model) View() string {
 	// The header
-	s := m.folder + "\n\n"
+	s := header.Width(m.width).Render(m.folder) + "\n"
 
 	// Iterate over our file entries
 	for i, choice := range m.entries {
 
 		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
+		style := normal
 		if m.cursor == i {
-			cursor = ">" // cursor!
+			style = highlight.Width(m.width)
 		}
 
 		// Is this choice selected?
@@ -127,11 +151,20 @@ func (m model) View() string {
 		if t.Year() < n.Year() {
 			format = timeFormatOld
 		}
-		s += fmt.Sprintf("%s %s %s %10d %s %s\n", cursor, checked, info.Mode(), info.Size(), info.ModTime().Format(format), choice.Name())
+		ns := normal
+		if choice.IsDir() {
+			ns = bold
+		}
+		s += style.Render(fmt.Sprintf("%s %s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
 	}
 
 	// The footer
-	s += "\nPress q to quit.\n"
+	f := m.footer
+	if f == "" {
+		f = "Press q to quit."
+	}
+	a := strings.Split(f, "\n")
+	s += footer.Width(m.width).Render(a[0]) + "\n"
 
 	// Send the UI for rendering
 	return s
@@ -146,6 +179,7 @@ func New(fsys fs.FS, root string) (*model, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.Sort(sortableEntries(entries))
 	return &model{
 		entries:  entries,
 		selected: make([]bool, len(entries)),
@@ -155,6 +189,25 @@ func New(fsys fs.FS, root string) (*model, error) {
 	}, nil
 }
 
+type sortableEntries []fs.DirEntry
+
+func (e sortableEntries) Less(i, j int) bool {
+	if e[i].IsDir() && !e[j].IsDir() {
+		return true
+	} else if !e[i].IsDir() && e[j].IsDir() {
+		return false
+	}
+	return e[i].Name() < e[j].Name()
+}
+
+func (e sortableEntries) Len() int {
+	return len(e)
+}
+
+func (e sortableEntries) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
 func main() {
 	m, err := New(os.DirFS("/"), os.Getenv("HOME"))
 	if err != nil {
@@ -162,7 +215,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(*m)
+	p := tea.NewProgram(*m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
