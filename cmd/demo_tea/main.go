@@ -62,12 +62,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				if m.cursor < m.offset {
+					m.offset--
+				}
 			}
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
 			if m.cursor < len(m.entries)-1 {
 				m.cursor++
+				if m.cursor-m.offset+1 > m.height-3 {
+					m.offset++
+				}
 			}
 
 		case "right":
@@ -95,7 +101,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					newModel.height = m.height
 					newModel.width = m.width
-					return *newModel, nil
+					return newModel, nil
 				}
 			}
 
@@ -126,15 +132,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := header.Width(m.width).Render(m.folder) + "\n"
+	s := header.Width(m.width).Height(1).Render(m.folder) + "\n"
 
 	// Iterate over our file entries
-	for i, choice := range m.entries {
-
+	for i := m.offset; i < len(m.entries)+m.offset && i < m.height+m.offset-3; i++ {
+		// for i, choice := range m.entries {
+		choice := m.entries[i]
 		// Is the cursor pointing at this choice?
-		style := normal
+		style := normal.Width(m.width).Height(1)
 		if m.cursor == i {
-			style = highlight.Width(m.width)
+			style = highlight.Width(m.width).Height(1)
 		}
 
 		// Is this choice selected?
@@ -155,7 +162,11 @@ func (m model) View() string {
 		if choice.IsDir() {
 			ns = bold
 		}
-		s += style.Render(fmt.Sprintf("%s %s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
+		s += style.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
+	}
+	repeat := m.height - 3 - len(m.entries)
+	if repeat > 0 {
+		s += strings.Repeat("\n", repeat)
 	}
 
 	// The footer
@@ -163,8 +174,7 @@ func (m model) View() string {
 	if f == "" {
 		f = "Press q to quit."
 	}
-	a := strings.Split(f, "\n")
-	s += footer.Width(m.width).Render(a[0]) + "\n"
+	s += footer.Width(m.width).Height(1).Render(f) + "\n"
 
 	// Send the UI for rendering
 	return s
@@ -215,7 +225,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(*m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
