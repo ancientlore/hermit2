@@ -1,10 +1,9 @@
-package main
+package browser
 
 import (
 	"fmt"
 	"io/fs"
 	"log"
-	"os"
 	"path"
 	"sort"
 	"strings"
@@ -20,11 +19,13 @@ const (
 )
 
 var (
-	normal    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	highlight = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
-	header    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
-	footer    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
-	bold      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#AAAAAA"))
+	normal      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	highlight   = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
+	header      = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	footer      = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	bold        = lipgloss.NewStyle().Foreground(lipgloss.Color("#AA00AA"))
+	special     = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
+	specialbold = lipgloss.NewStyle().Foreground(lipgloss.Color("#770077"))
 )
 
 type model struct {
@@ -166,6 +167,11 @@ func (m model) View() string {
 		ns := normal
 		if choice.IsDir() {
 			ns = bold
+			if strings.HasPrefix(choice.Name(), ".") {
+				ns = specialbold
+			}
+		} else if strings.HasPrefix(choice.Name(), ".") {
+			ns = special
 		}
 		s += style.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
 	}
@@ -194,7 +200,7 @@ func New(fsys fs.FS, root string) (*model, error) {
 	if err != nil {
 		return nil, err
 	}
-	sort.Sort(sortableEntries(entries))
+	sort.Sort(sortByExt(entries))
 	return &model{
 		entries:  entries,
 		selected: make([]bool, len(entries)),
@@ -202,37 +208,4 @@ func New(fsys fs.FS, root string) (*model, error) {
 		folder:   root,
 		fsys:     fsys,
 	}, nil
-}
-
-type sortableEntries []fs.DirEntry
-
-func (e sortableEntries) Less(i, j int) bool {
-	if e[i].IsDir() && !e[j].IsDir() {
-		return true
-	} else if !e[i].IsDir() && e[j].IsDir() {
-		return false
-	}
-	return e[i].Name() < e[j].Name()
-}
-
-func (e sortableEntries) Len() int {
-	return len(e)
-}
-
-func (e sortableEntries) Swap(i, j int) {
-	e[i], e[j] = e[j], e[i]
-}
-
-func main() {
-	m, err := New(os.DirFS("/"), os.Getenv("HOME"))
-	if err != nil {
-		fmt.Printf("Error opening folder: %v", err)
-		os.Exit(1)
-	}
-
-	p := tea.NewProgram(m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
 }
