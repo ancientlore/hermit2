@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -9,7 +10,16 @@ import (
 )
 
 func main() {
-	m, err := browser.New(os.DirFS("/"), os.Getenv("HOME"))
+	wd, _ := os.Getwd()
+
+	var (
+		root   = flag.String("root", "/", "Root file system")
+		folder = flag.String("path", wd, "Folder")
+	)
+
+	flag.Parse()
+
+	m, err := browser.New(os.DirFS(*root), *folder)
 	if err != nil {
 		fmt.Printf("Error opening folder: %v", err)
 		os.Exit(1)
