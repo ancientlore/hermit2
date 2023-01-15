@@ -140,7 +140,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := header.Width(m.width).Height(1).Render(filepath.FromSlash(path.Join(m.root, m.folder))) + "\n"
+	s := header.Width(m.width).Height(1).Render(path.Join(filepath.FromSlash(m.root), m.folder)) + "\n"
 
 	// Iterate over our file entries
 	for i := m.offset; i < len(m.entries)+m.offset && i < m.height+m.offset-3; i++ {
