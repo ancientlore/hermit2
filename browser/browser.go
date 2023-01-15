@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -29,16 +30,17 @@ var (
 )
 
 type model struct {
-	fsys     fs.FS
-	folder   string
-	entries  []fs.DirEntry
-	selected []bool
-	cursor   int
-	offset   int
-	width    int
-	height   int
-	footer   string
-	prev     tea.Model
+	fsys     fs.FS         // The filesystem being browsed
+	root     string        // The name for the root of the file system
+	folder   string        // The current folder in the file system
+	entries  []fs.DirEntry // The list of directory entries read
+	selected []bool        // Whether an entry is selected
+	cursor   int           // Current position of cursor
+	offset   int           // The offset of the view (enables scrolling)
+	width    int           // The width of the current view
+	height   int           // The height of the current view
+	footer   string        // Footer text
+	prev     tea.Model     // The previous model (for going back)
 }
 
 func (m model) Init() tea.Cmd {
@@ -81,7 +83,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "right":
 			entry := m.entries[m.cursor]
 			if entry.IsDir() {
-				newModel, err := New(m.fsys, path.Join(m.folder, m.entries[m.cursor].Name()))
+				newModel, err := New(m.fsys, m.root, path.Join(m.folder, m.entries[m.cursor].Name()))
 				if err != nil {
 					m.footer = err.Error()
 				} else {
@@ -101,7 +103,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a = strings.TrimSuffix(a, "/")
 			}
 			if a != m.folder {
-				newModel, err := New(m.fsys, a)
+				newModel, err := New(m.fsys, m.root, a)
 				if err != nil {
 					log.Print(err)
 				} else {
@@ -138,7 +140,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := header.Width(m.width).Height(1).Render(m.folder) + "\n"
+	s := header.Width(m.width).Height(1).Render(filepath.FromSlash(path.Join(m.root, m.folder))) + "\n"
 
 	// Iterate over our file entries
 	for i := m.offset; i < len(m.entries)+m.offset && i < m.height+m.offset-3; i++ {
@@ -191,8 +193,8 @@ func (m model) View() string {
 	return s
 }
 
-func New(fsys fs.FS, root string) (*model, error) {
-	rf := strings.TrimPrefix(root, "/")
+func New(fsys fs.FS, root, folder string) (*model, error) {
+	rf := strings.TrimPrefix(folder, "/")
 	if len(rf) == 0 {
 		rf = "."
 	}
@@ -205,7 +207,8 @@ func New(fsys fs.FS, root string) (*model, error) {
 		entries:  entries,
 		selected: make([]bool, len(entries)),
 		cursor:   0,
-		folder:   root,
+		root:     root,
+		folder:   folder,
 		fsys:     fsys,
 	}, nil
 }

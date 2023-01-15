@@ -19,7 +19,7 @@ func main() {
 
 	flag.Parse()
 
-	m, err := browser.New(os.DirFS(*root), *folder)
+	m, err := browser.New(os.DirFS(*root), *root, *folder)
 	if err != nil {
 		fmt.Printf("Error opening folder: %v", err)
 		os.Exit(1)
