@@ -62,8 +62,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 
-		// The "up" and "k" keys move the cursor up
-		case "up", "k":
+		// The "up" keys move the cursor up
+		case "up":
 			if m.cursor > 0 {
 				m.cursor--
 				if m.cursor < m.offset {
@@ -71,8 +71,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		// The "down" and "j" keys move the cursor down
-		case "down", "j":
+		// The "down" keys move the cursor down
+		case "down":
 			if m.cursor < len(m.entries)-1 {
 				m.cursor++
 				if m.cursor-m.offset+1 > m.height-3 {
@@ -113,6 +113,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newModel.width = m.width
 					return newModel, nil
 				}
+			}
+
+		case "ctrl+up", "home":
+			m.cursor = 0
+			m.offset = 0
+
+		case "ctrl+down", "end":
+			m.cursor = len(m.entries) - 1
+			m.offset = m.cursor + 1 - m.height + 3
+			if m.offset < 0 {
+				m.offset = 0
+			}
+
+		case "shift+up", "pgup":
+			m.cursor -= m.height - 4
+			if m.cursor < 0 {
+				m.cursor = 0
+			}
+			if m.cursor < m.offset {
+				m.offset = m.cursor
+			}
+
+		case "shift+down", "pgdown":
+			m.cursor += m.height - 4
+			if m.cursor >= len(m.entries) {
+				m.cursor = len(m.entries) - 1
+			}
+			if m.cursor > m.offset-m.height+3 {
+				m.offset = m.cursor + 1 - m.height + 3
+			}
+			if m.offset < 0 {
+				m.offset = 0
 			}
 
 		// The "enter" key and the spacebar (a literal space) toggle
