@@ -12,31 +12,39 @@ import (
 )
 
 func main() {
-	rd := filepath.FromSlash("/")
+	// Get working directory
 	wd, err := os.Getwd()
-	if err == nil {
-		a := strings.SplitN(wd, string(filepath.Separator), 2)
-		rd = a[0] + string(filepath.Separator)
-		if len(a) > 1 {
-			wd = a[1]
-		} else {
-			wd = ""
-		}
+	if err != nil {
+		wd, _ = filepath.Abs(".")
 	}
-	var (
-		root   = flag.String("root", rd, "Root file system")
-		folder = flag.String("path", wd, "Folder")
-	)
 
+	// Process flags
+	var (
+		folder = flag.String("path", wd, "Startup path")
+	)
 	flag.Parse()
 
-	fmt.Printf("Opening %q\n", *root)
-	m, err := browser.New(os.DirFS(*root), *root, filepath.ToSlash(*folder))
+	absFolder, err := filepath.Abs(*folder)
+	if err != nil {
+		fmt.Printf("Unable to get absolute path: %s\n", err)
+		os.Exit(1)
+	}
+
+	// Get file system to open and path from folder
+	fsRoot := filepath.VolumeName(absFolder)
+	fsPath := strings.TrimPrefix(absFolder, fsRoot)
+	fsRoot += string(filepath.Separator)
+
+	// fmt.Printf("Open folder %s on file system %s\n", fsPath, fsRoot)
+
+	// Create a browser
+	m, err := browser.New(os.DirFS(fsRoot), fsRoot, filepath.ToSlash(fsPath))
 	if err != nil {
 		fmt.Printf("Error opening folder: %v\n", err)
 		os.Exit(1)
 	}
 
+	// Open tea with and run the initial model
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v\n", err)

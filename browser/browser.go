@@ -81,16 +81,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "right":
-			entry := m.entries[m.cursor]
-			if entry.IsDir() {
-				newModel, err := New(m.fsys, m.root, path.Join(m.folder, m.entries[m.cursor].Name()))
-				if err != nil {
-					m.footer = err.Error()
-				} else {
-					newModel.height = m.height
-					newModel.width = m.width
-					newModel.prev = m
-					return *newModel, nil
+			if len(m.entries) > m.cursor {
+				entry := m.entries[m.cursor]
+				if entry.IsDir() {
+					newModel, err := New(m.fsys, m.root, path.Join(m.folder, m.entries[m.cursor].Name()))
+					if err != nil {
+						m.footer = err.Error()
+					} else {
+						newModel.height = m.height
+						newModel.width = m.width
+						newModel.prev = m
+						return *newModel, nil
+					}
 				}
 			}
 
@@ -140,7 +142,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := header.Width(m.width).Height(1).Render(path.Join(filepath.ToSlash(m.root), m.folder)) + "\n"
+	s := header.Width(m.width).Height(1).Render(filepath.Join(m.root, filepath.FromSlash(m.folder))) + "\n"
 
 	// Iterate over our file entries
 	for i := m.offset; i < len(m.entries)+m.offset && i < m.height+m.offset-3; i++ {
