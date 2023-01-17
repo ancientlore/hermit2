@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"mime"
 	"path"
 	"path/filepath"
 	"sort"
@@ -15,8 +16,8 @@ import (
 )
 
 const (
-	timeFormatOld = "Mo Jan _2  2006"
-	timeFormatNew = "Mo Jan _2 15:04"
+	timeFormatOld = "Mon Jan _2  2006"
+	timeFormatNew = "Mon Jan _2 15:04"
 )
 
 var (
@@ -115,11 +116,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "ctrl+up", "home":
+		case "ctrl+up", "home", "alt+up":
 			m.cursor = 0
 			m.offset = 0
 
-		case "ctrl+down", "end":
+		case "ctrl+down", "end", "alt+down":
 			m.cursor = len(m.entries) - 1
 			m.offset = m.cursor + 1 - m.height + 3
 			if m.offset < 0 {
@@ -150,14 +151,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
 		case "enter", " ":
-			ok := m.selected[m.cursor]
-			if ok {
-				m.selected[m.cursor] = false
-			} else {
-				m.selected[m.cursor] = true
-			}
-			if m.cursor < len(m.entries)-1 {
-				m.cursor++
+			if m.cursor < len(m.entries) {
+				ok := m.selected[m.cursor]
+				if ok {
+					m.selected[m.cursor] = false
+				} else {
+					m.selected[m.cursor] = true
+				}
+				if m.cursor < len(m.entries)-1 {
+					m.cursor++
+				}
 			}
 		}
 
@@ -218,6 +221,12 @@ func (m model) View() string {
 
 	// The footer
 	f := m.footer
+	if f == "" {
+		if m.cursor < len(m.entries) {
+			ext := path.Ext(m.entries[m.cursor].Name())
+			f = mime.TypeByExtension(ext)
+		}
+	}
 	if f == "" {
 		f = "Press q to quit."
 	}
