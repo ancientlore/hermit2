@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ancientlore/hermit2/config"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -166,7 +167,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, DefaultKeyMap.RunShell):
-			c := exec.Command("bash")
+			c := exec.Command(config.Shell())
 			c.Dir = filepath.Join(m.root, filepath.FromSlash(m.folder))
 			cmd := tea.ExecProcess(c, nil)
 			return m, cmd // tea.Sequence(tea.ExitAltScreen, cmd, tea.EnterAltScreen)
