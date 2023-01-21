@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ancientlore/hermit2/browser"
+	"github.com/ancientlore/hermit2/config"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -23,6 +24,14 @@ func main() {
 		folder = flag.String("path", wd, "Startup path")
 	)
 	flag.Parse()
+
+	fmt.Printf("Home folder:   %s\n", config.HomeFolder())
+	cfgFolder, err := config.ConfigFolder()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Printf("Config folder: %s\n", cfgFolder)
 
 	absFolder, err := filepath.Abs(*folder)
 	if err != nil {
