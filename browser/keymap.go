@@ -13,6 +13,7 @@ type KeyMap struct {
 	End          key.Binding
 	ToggleSelect key.Binding
 	Quit         key.Binding
+	RunShell     key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
@@ -55,5 +56,9 @@ var DefaultKeyMap = KeyMap{
 	Quit: key.NewBinding(
 		key.WithKeys("alt+x"),
 		key.WithHelp("alt+x", "exit Hermit"),
+	),
+	RunShell: key.NewBinding(
+		key.WithKeys("alt+z", "$"),
+		key.WithHelp("alt+z/$", "run shell"),
 	),
 }

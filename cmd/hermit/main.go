@@ -39,6 +39,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("Shell:         %s\n", config.Shell())
+
 	// Get file system to open and path from folder
 	fsRoot := filepath.VolumeName(absFolder)
 	fsPath := strings.TrimPrefix(absFolder, fsRoot)
