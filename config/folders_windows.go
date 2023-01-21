@@ -2,7 +2,12 @@
 
 package config
 
-import "os"
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 const (
 	configFolderName = "Hermit"
