@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"mime"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -163,6 +164,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor++
 				}
 			}
+
+		case key.Matches(msg, DefaultKeyMap.RunShell):
+			c := exec.Command("bash")
+			c.Dir = filepath.Join(m.root, filepath.FromSlash(m.folder))
+			cmd := tea.ExecProcess(c, nil)
+			return m, cmd // tea.Sequence(tea.ExitAltScreen, cmd, tea.EnterAltScreen)
 		}
 
 	case tea.WindowSizeMsg:
