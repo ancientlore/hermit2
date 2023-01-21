@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -57,14 +58,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 
 		// Cool, what was the actual key pressed?
-		switch msg.String() {
+		switch {
 
 		// These keys should exit the program.
-		case "ctrl+c", "q":
+		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
 
 		// The "up" keys move the cursor up
-		case "up":
+		case key.Matches(msg, DefaultKeyMap.Up):
 			if m.cursor > 0 {
 				m.cursor--
 				if m.cursor < m.offset {
@@ -73,7 +74,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		// The "down" keys move the cursor down
-		case "down":
+		case key.Matches(msg, DefaultKeyMap.Down):
 			if m.cursor < len(m.entries)-1 {
 				m.cursor++
 				if m.cursor-m.offset+1 > m.height-3 {
@@ -81,7 +82,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "right":
+		case key.Matches(msg, DefaultKeyMap.Right):
 			if len(m.entries) > m.cursor {
 				entry := m.entries[m.cursor]
 				if entry.IsDir() {
@@ -97,7 +98,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "left":
+		case key.Matches(msg, DefaultKeyMap.Left):
 			if m.prev != nil {
 				return m.prev, nil
 			}
@@ -116,18 +117,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "ctrl+up", "home", "alt+up":
+		case key.Matches(msg, DefaultKeyMap.Home):
 			m.cursor = 0
 			m.offset = 0
 
-		case "ctrl+down", "end", "alt+down":
+		case key.Matches(msg, DefaultKeyMap.End):
 			m.cursor = len(m.entries) - 1
 			m.offset = m.cursor + 1 - m.height + 3
 			if m.offset < 0 {
 				m.offset = 0
 			}
 
-		case "shift+up", "pgup":
+		case key.Matches(msg, DefaultKeyMap.PageUp):
 			m.cursor -= m.height - 4
 			if m.cursor < 0 {
 				m.cursor = 0
@@ -136,7 +137,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.offset = m.cursor
 			}
 
-		case "shift+down", "pgdown":
+		case key.Matches(msg, DefaultKeyMap.PageDown):
 			m.cursor += m.height - 4
 			if m.cursor >= len(m.entries) {
 				m.cursor = len(m.entries) - 1
@@ -150,7 +151,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
-		case "enter", " ":
+		case key.Matches(msg, DefaultKeyMap.ToggleSelect):
 			if m.cursor < len(m.entries) {
 				ok := m.selected[m.cursor]
 				if ok {
@@ -228,7 +229,7 @@ func (m model) View() string {
 		}
 	}
 	if f == "" {
-		f = "Press q to quit."
+		f = "Alt-x to quit."
 	}
 	s += footer.Width(m.width).Height(1).Render(f) + "\n"
 
