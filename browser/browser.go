@@ -270,7 +270,7 @@ func (m model) View() string {
 	s := header.Width(m.width).Height(1).Render(filepath.Join(m.root, filepath.FromSlash(m.folder))) + "\n"
 
 	// Iterate over our file entries
-	for i := m.offset; i < len(m.entries)+m.offset && i < m.height+m.offset-3; i++ {
+	for i := m.offset; i < len(m.entries) && i < m.height+m.offset-3; i++ {
 		// for i, choice := range m.entries {
 		choice := m.entries[i]
 		// Is the cursor pointing at this choice?
