@@ -59,6 +59,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Is it a key press?
 	case tea.KeyMsg:
 
+		lastKey = msg.String()
+
 		// Cool, what was the actual key pressed?
 		switch {
 
@@ -166,6 +168,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, DefaultKeyMap.Select):
+			if m.cursor < len(m.entries) {
+				m.selected[m.cursor] = true
+				if m.cursor < len(m.entries)-1 {
+					m.cursor++
+				}
+			}
+
+		case key.Matches(msg, DefaultKeyMap.DeSelect):
+			if m.cursor < len(m.entries) {
+				m.selected[m.cursor] = false
+				if m.cursor < len(m.entries)-1 {
+					m.cursor++
+				}
+			}
+
+		case key.Matches(msg, DefaultKeyMap.SelectAll):
+			for i := range m.selected {
+				m.selected[i] = true
+			}
+
+		case key.Matches(msg, DefaultKeyMap.DeSelectAll):
+			for i := range m.selected {
+				m.selected[i] = false
+			}
+
 		case key.Matches(msg, DefaultKeyMap.RunShell):
 			c := exec.Command(config.Shell())
 			c.Dir = filepath.Join(m.root, filepath.FromSlash(m.folder))
@@ -183,6 +211,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Note that we're not returning a command.
 	return m, nil
 }
+
+// TODO: remove this later
+var lastKey string
 
 func (m model) View() string {
 	// The header
@@ -237,8 +268,10 @@ func (m model) View() string {
 		}
 	}
 	if f == "" {
-		f = "Alt-x to quit."
+		f = "Ctrl-C to quit."
 	}
+	f += " Last key: " + lastKey
+
 	s += footer.Width(m.width).Height(1).Render(f) + "\n"
 
 	// Send the UI for rendering

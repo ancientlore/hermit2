@@ -12,6 +12,10 @@ type KeyMap struct {
 	Home         key.Binding
 	End          key.Binding
 	ToggleSelect key.Binding
+	Select       key.Binding
+	DeSelect     key.Binding
+	SelectAll    key.Binding
+	DeSelectAll  key.Binding
 	Quit         key.Binding
 	RunShell     key.Binding
 }
@@ -53,12 +57,28 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("enter", " "),
 		key.WithHelp("space/↲", "toggle select"),
 	),
+	Select: key.NewBinding(
+		key.WithKeys("+"),
+		key.WithHelp("+", "select"),
+	),
+	DeSelect: key.NewBinding(
+		key.WithKeys("-"),
+		key.WithHelp("-", "deselect"),
+	),
+	SelectAll: key.NewBinding(
+		key.WithKeys("alt+=", "ctrl+="),
+		key.WithHelp("alt+=/ctrl+=", "select all"),
+	),
+	DeSelectAll: key.NewBinding(
+		key.WithKeys("alt+-", "ctrl+-"),
+		key.WithHelp("alt+-/ctrl+-", "deselect all"),
+	),
 	Quit: key.NewBinding(
-		key.WithKeys("alt+x"),
-		key.WithHelp("alt+x", "exit Hermit"),
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "exit Hermit"),
 	),
 	RunShell: key.NewBinding(
-		key.WithKeys("alt+z", "$"),
-		key.WithHelp("alt+z/$", "run shell"),
+		key.WithKeys("$"),
+		key.WithHelp("$", "run shell"),
 	),
 }
