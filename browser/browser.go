@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"mime"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -133,7 +134,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fsRoot := filepath.VolumeName(home)
 			fsPath := strings.TrimPrefix(home, fsRoot)
 			fsRoot += string(filepath.Separator)
-			newModel, err := New(m.fsys, fsRoot, fsPath)
+			newModel, err := New(os.DirFS(fsRoot), fsRoot, filepath.ToSlash(fsPath))
 			if err != nil {
 				m.footer = err.Error()
 			} else {
