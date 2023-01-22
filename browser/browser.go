@@ -170,7 +170,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c := exec.Command(config.Shell())
 			c.Dir = filepath.Join(m.root, filepath.FromSlash(m.folder))
 			cmd := tea.ExecProcess(c, nil)
-			return m, cmd // tea.Sequence(tea.ExitAltScreen, cmd, tea.EnterAltScreen)
+			return m, tea.Sequence(tea.ClearScreen, cmd)
 		}
 
 	case tea.WindowSizeMsg:
