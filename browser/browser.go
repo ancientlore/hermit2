@@ -79,18 +79,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Up):
 			if m.cursor > 0 {
 				m.cursor--
-				if m.cursor < m.offset {
-					m.offset--
-				}
 			}
 
 		// The "down" keys move the cursor down
 		case key.Matches(msg, DefaultKeyMap.Down):
 			if m.cursor < len(m.entries)-1 {
 				m.cursor++
-				if m.cursor-m.offset+1 > m.height-3 {
-					m.offset++
-				}
 			}
 
 		case key.Matches(msg, DefaultKeyMap.Right):
@@ -148,34 +142,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.Home):
 			m.cursor = 0
-			m.offset = 0
 
 		case key.Matches(msg, DefaultKeyMap.End):
 			m.cursor = len(m.entries) - 1
-			m.offset = m.cursor + 1 - m.height + 3
-			if m.offset < 0 {
-				m.offset = 0
-			}
 
 		case key.Matches(msg, DefaultKeyMap.PageUp):
 			m.cursor -= m.height - 4
 			if m.cursor < 0 {
 				m.cursor = 0
 			}
-			if m.cursor < m.offset {
-				m.offset = m.cursor
-			}
 
 		case key.Matches(msg, DefaultKeyMap.PageDown):
 			m.cursor += m.height - 4
 			if m.cursor >= len(m.entries) {
 				m.cursor = len(m.entries) - 1
-			}
-			if m.cursor > m.offset-m.height+3 {
-				m.offset = m.cursor + 1 - m.height + 3
-			}
-			if m.offset < 0 {
-				m.offset = 0
 			}
 
 		// The "enter" key and the spacebar (a literal space) toggle
@@ -226,6 +206,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd)
 		}
 
+		m.fixOffset()
+
 	case refreshMsg:
 		newModel, err := New(m.fsys, m.root, m.folder)
 		if err != nil {
@@ -235,12 +217,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newModel.width = m.width
 			newModel.prev = m.prev
 			newModel.cursor = m.cursor
+			newModel.offset = m.offset
 			if newModel.cursor >= len(newModel.entries) {
 				newModel.cursor = len(newModel.entries) - 1
 				if newModel.cursor < 0 {
 					newModel.cursor = 0
 				}
 			}
+			newModel.fixOffset()
 			return newModel, nil
 		}
 
@@ -253,6 +237,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Return the updated model to the Bubble Tea runtime for processing.
 	// Note that we're not returning a command.
 	return m, nil
+}
+
+func (m *model) fixOffset() {
+	// Fix cursor location
+	if m.cursor > len(m.entries)-1 {
+		m.cursor = len(m.entries) - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+
+	// cursor before offset - offset needs to be decreased
+	if m.cursor < m.offset {
+		m.offset = m.cursor
+	}
+
+	// cursor greater than offset + window size - offset needs to be increased
+	if m.cursor-m.offset+1 > m.height-3 {
+		m.offset = m.cursor + 1 - m.height + 3
+	}
+	if m.offset < 0 {
+		m.offset = 0
+	}
 }
 
 // TODO: remove this later
