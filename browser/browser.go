@@ -33,6 +33,12 @@ var (
 	specialbold = lipgloss.NewStyle().Foreground(lipgloss.Color("#770077"))
 )
 
+type refreshMsg struct{}
+
+func refreshCmd() tea.Msg {
+	return refreshMsg{}
+}
+
 type model struct {
 	fsys     fs.FS         // The filesystem being browsed
 	root     string        // The name for the root of the file system
@@ -121,6 +127,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, DefaultKeyMap.GoHome):
+			home := config.HomeFolder()
+			home, _ = filepath.Abs(home)
+			fsRoot := filepath.VolumeName(home)
+			fsPath := strings.TrimPrefix(home, fsRoot)
+			fsRoot += string(filepath.Separator)
+			newModel, err := New(m.fsys, fsRoot, fsPath)
+			if err != nil {
+				m.footer = err.Error()
+			} else {
+				newModel.height = m.height
+				newModel.width = m.width
+				return *newModel, nil
+			}
+
+		case key.Matches(msg, DefaultKeyMap.Refresh):
+			return m, refreshCmd
+
 		case key.Matches(msg, DefaultKeyMap.Home):
 			m.cursor = 0
 			m.offset = 0
@@ -198,7 +222,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c := exec.Command(config.Shell())
 			c.Dir = filepath.Join(m.root, filepath.FromSlash(m.folder))
 			cmd := tea.ExecProcess(c, nil)
-			return m, tea.Sequence(tea.ClearScreen, cmd)
+			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd)
+		}
+
+	case refreshMsg:
+		newModel, err := New(m.fsys, m.root, m.folder)
+		if err != nil {
+			log.Print(err)
+		} else {
+			newModel.height = m.height
+			newModel.width = m.width
+			newModel.prev = m.prev
+			newModel.cursor = m.cursor
+			if newModel.cursor >= len(newModel.entries) {
+				newModel.cursor = len(newModel.entries) - 1
+				if newModel.cursor < 0 {
+					newModel.cursor = 0
+				}
+			}
+			return newModel, nil
 		}
 
 	case tea.WindowSizeMsg:
@@ -236,23 +278,36 @@ func (m model) View() string {
 		}
 
 		// Render the row
-		info, _ := choice.Info()
-		n := time.Now().Local()
-		t := info.ModTime().Local()
-		format := timeFormatNew
-		if t.Year() < n.Year() {
-			format = timeFormatOld
-		}
-		ns := normal
-		if choice.IsDir() {
-			ns = bold
-			if strings.HasPrefix(choice.Name(), ".") {
-				ns = specialbold
+		info, err := choice.Info()
+		if err == nil {
+			n := time.Now().Local()
+			t := info.ModTime().Local()
+			format := timeFormatNew
+			if t.Year() < n.Year() {
+				format = timeFormatOld
 			}
-		} else if strings.HasPrefix(choice.Name(), ".") {
-			ns = special
+			ns := normal
+			if choice.IsDir() {
+				ns = bold
+				if strings.HasPrefix(choice.Name(), ".") {
+					ns = specialbold
+				}
+			} else if strings.HasPrefix(choice.Name(), ".") {
+				ns = special
+			}
+			s += style.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
+		} else {
+			ns := normal
+			if choice.IsDir() {
+				ns = bold
+				if strings.HasPrefix(choice.Name(), ".") {
+					ns = specialbold
+				}
+			} else if strings.HasPrefix(choice.Name(), ".") {
+				ns = special
+			}
+			s += style.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, "?", 0, "", ns.Render(choice.Name()))) + "\n"
 		}
-		s += style.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
 	}
 	repeat := m.height - 3 - len(m.entries)
 	if repeat > 0 {

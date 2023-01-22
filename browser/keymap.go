@@ -18,6 +18,8 @@ type KeyMap struct {
 	DeSelectAll  key.Binding
 	Quit         key.Binding
 	RunShell     key.Binding
+	GoHome       key.Binding
+	Refresh      key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
@@ -80,5 +82,13 @@ var DefaultKeyMap = KeyMap{
 	RunShell: key.NewBinding(
 		key.WithKeys("$"),
 		key.WithHelp("$", "run shell"),
+	),
+	GoHome: key.NewBinding(
+		key.WithKeys("~", "alt+h", "ctrl+h"),
+		key.WithHelp("~/alt+h/ctrl+h", "navigate to home folder"),
+	),
+	Refresh: key.NewBinding(
+		key.WithKeys("alt+r", "ctrl+r", "f5"),
+		key.WithHelp("alt+r/ctrl+r/f5", "refresh"),
 	),
 }
