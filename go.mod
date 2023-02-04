@@ -1,13 +1,13 @@
 module github.com/ancientlore/hermit2
 
 require (
+	github.com/charmbracelet/bubbles v0.15.0
 	github.com/charmbracelet/bubbletea v0.23.1
 	github.com/charmbracelet/lipgloss v0.6.0
 )
 
 require (
 	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
-	github.com/charmbracelet/bubbles v0.15.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
@@ -23,4 +23,4 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 )
 
-go 1.19
+go 1.20
