@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ancientlore/hermit2/config"
+	"github.com/ancientlore/hermit2/text"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -100,6 +101,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						newModel.prev = m
 						return *newModel, nil
 					}
+				} else if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
+					return text.New(path.Join(m.folder, m.entries[m.cursor].Name()), m, m.width, m.height), nil
 				}
 			}
 
