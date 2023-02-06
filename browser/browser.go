@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"mime"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -103,6 +104,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				} else if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
 					return text.New(path.Join(m.folder, m.entries[m.cursor].Name()), m, m.width, m.height), nil
+				} else if entry.Type().IsRegular() {
+					f, err := os.Open(path.Join(m.folder, m.entries[m.cursor].Name()))
+					if err == nil {
+						defer f.Close()
+						b := make([]byte, 512)
+						n, err := f.Read(b)
+						if err == nil {
+							if strings.HasPrefix(http.DetectContentType(b[0:n]), "text") {
+								return text.New(path.Join(m.folder, m.entries[m.cursor].Name()), m, m.width, m.height), nil
+							}
+						} else {
+							m.footer = err.Error()
+						}
+					} else {
+						m.footer = err.Error()
+					}
 				}
 			}
 

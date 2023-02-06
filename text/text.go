@@ -8,6 +8,7 @@ import (
 	"github.com/ancientlore/hermit2/scroller"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/huandu/xstrings"
 )
 
 var (
@@ -60,7 +61,7 @@ func New(path string, prev tea.Model, width, height int) *model {
 		in = []byte(err.Error())
 	}
 
-	lines := strings.Split(string(in), "\n")
+	lines := strings.Split(xstrings.ExpandTabs(strings.ReplaceAll(string(in), "\r", ""), 8), "\n")
 
 	return &model{
 		title: path,
