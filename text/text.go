@@ -45,7 +45,7 @@ func (m model) View() string {
 	s := header.Width(m.Width).Height(1).Render(m.title) + "\n"
 	for i := m.Offset(); i < m.Lines && i < m.VisibleLines()+m.Offset(); i++ {
 		choice := m.text[i]
-		style := normal.Width(m.Width).Height(1)
+		style := normal.Width(m.Width).Height(1).MaxWidth(m.Width)
 		if m.Cursor() == i {
 			style = highlight.Width(m.Width).Height(1)
 		}
