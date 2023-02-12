@@ -97,7 +97,7 @@ func (v Text) View() string {
 		choice := v.text[i]
 		style := normal.Width(v.width).Height(1).MaxWidth(v.width)
 		if v.Pos() == i {
-			style = highlight.Width(v.width).Height(1)
+			style = highlight.Width(v.width).Height(1).MaxWidth(v.width)
 		}
 		s += style.Render(style.Render(choice)) + "\n"
 	}
