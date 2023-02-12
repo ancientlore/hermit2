@@ -68,6 +68,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 
 		lastKey = msg.String()
+		sizeCmd := func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height} }
 
 		// Cool, what was the actual key pressed?
 		switch {
@@ -90,17 +91,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.Right):
 			if len(m.entries) > m.cursor {
-				sizeCmd := func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height} }
 				entry := m.entries[m.cursor]
 				if entry.IsDir() {
 					newModel, err := New(m.fsys, m.root, path.Join(m.folder, m.entries[m.cursor].Name()))
 					if err != nil {
 						m.footer = err.Error()
 					} else {
-						newModel.height = m.height
-						newModel.width = m.width
 						newModel.prev = m
-						return *newModel, nil
+						return *newModel, sizeCmd
 					}
 				} else if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
 					return NewTextModel(path.Join(m.folder, m.entries[m.cursor].Name()), m), sizeCmd
@@ -125,7 +123,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.Left):
 			if m.prev != nil {
-				return m.prev, nil
+				return m.prev, sizeCmd
 			}
 			a, _ := path.Split(m.folder)
 			if a != "/" {
@@ -136,9 +134,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					log.Print(err)
 				} else {
-					newModel.height = m.height
-					newModel.width = m.width
-					return newModel, nil
+					return newModel, sizeCmd
 				}
 			}
 
@@ -152,9 +148,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				m.footer = err.Error()
 			} else {
-				newModel.height = m.height
-				newModel.width = m.width
-				return *newModel, nil
+				return *newModel, sizeCmd
 			}
 
 		case key.Matches(msg, DefaultKeyMap.Refresh):
@@ -223,7 +217,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c := exec.Command(config.Shell())
 			c.Dir = filepath.Join(m.root, filepath.FromSlash(m.folder))
 			cmd := tea.ExecProcess(c, nil)
-			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd)
+			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd, sizeCmd)
 		}
 
 		m.fixOffset()
@@ -233,8 +227,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err != nil {
 			log.Print(err)
 		} else {
-			newModel.height = m.height
-			newModel.width = m.width
 			newModel.prev = m.prev
 			newModel.cursor = m.cursor
 			newModel.offset = m.offset
@@ -245,7 +237,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			newModel.fixOffset()
-			return newModel, nil
+			return newModel, func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height} }
 		}
 
 	case tea.WindowSizeMsg:
