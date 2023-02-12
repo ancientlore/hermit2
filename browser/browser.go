@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ancientlore/hermit2/config"
-	"github.com/ancientlore/hermit2/text"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -91,6 +90,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.Right):
 			if len(m.entries) > m.cursor {
+				sizeCmd := func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height} }
 				entry := m.entries[m.cursor]
 				if entry.IsDir() {
 					newModel, err := New(m.fsys, m.root, path.Join(m.folder, m.entries[m.cursor].Name()))
@@ -103,7 +103,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return *newModel, nil
 					}
 				} else if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
-					return text.New(path.Join(m.folder, m.entries[m.cursor].Name()), m, m.width, m.height), nil
+					return NewTextModel(path.Join(m.folder, m.entries[m.cursor].Name()), m), sizeCmd
 				} else if entry.Type().IsRegular() {
 					f, err := os.Open(path.Join(m.folder, m.entries[m.cursor].Name()))
 					if err == nil {
@@ -112,7 +112,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						n, err := f.Read(b)
 						if err == nil {
 							if strings.HasPrefix(http.DetectContentType(b[0:n]), "text") {
-								return text.New(path.Join(m.folder, m.entries[m.cursor].Name()), m, m.width, m.height), nil
+								return NewTextModel(path.Join(m.folder, m.entries[m.cursor].Name()), m), sizeCmd
 							}
 						} else {
 							m.footer = err.Error()

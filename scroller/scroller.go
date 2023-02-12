@@ -1,40 +1,23 @@
 package scroller
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-// Model implements scrolling behavior and is intended to be embedded in other models.
+var (
+	header = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	footer = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+)
+
+// Model implements scrolling behavior over a Viewer.
 type Model struct {
-	HeaderLines int       // Number of header lines
-	FooterLines int       // Number of footer lines
-	Lines       int       // The number of lines to scroll over
-	Prev        tea.Model // The previous model (for going back)
-	cursor      int       // Current position of cursor
-	offset      int       // The offset of the view (enables scrolling)
-	Width       int       // The width of the current view
-	Height      int       // The height of the current view
-}
-
-// Cursor returns the current cursor position.
-func (m Model) Cursor() int {
-	return m.cursor
-}
-
-// Offset returns the current offset in view.
-func (m Model) Offset() int {
-	return m.offset
-}
-
-// VisibleLines returns the number of lines in the scolling view,
-// excluding the header and footer.
-func (m Model) VisibleLines() int {
-	visible := m.Height - m.HeaderLines - m.FooterLines - 1
-	if visible < 0 {
-		visible = 0
-	}
-	return visible
+	Header   string    // Header text
+	Viewport Viewer    // The view we are using
+	Prev     tea.Model // The previous model (for going back)
 }
 
 // Init initializes the model.
@@ -55,50 +38,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "up" keys move the cursor up
 		case key.Matches(msg, DefaultKeyMap.Up):
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.Viewport.Up()
 
 		// The "down" keys move the cursor down
 		case key.Matches(msg, DefaultKeyMap.Down):
-			if m.cursor < m.Lines-1 {
-				m.cursor++
-			}
+			m.Viewport.Down()
 
 		case key.Matches(msg, DefaultKeyMap.Left):
 			if m.Prev != nil {
-				return m.Prev, nil
+				return m.Prev, func() tea.Msg { return tea.WindowSizeMsg{Width: m.Viewport.Width(), Height: m.Viewport.Height() + 2} }
 			}
 
 		case key.Matches(msg, DefaultKeyMap.Home):
-			m.cursor = 0
+			m.Viewport.Home()
 
 		case key.Matches(msg, DefaultKeyMap.End):
-			m.cursor = m.Lines - 1
+			m.Viewport.End()
 
 		case key.Matches(msg, DefaultKeyMap.PageUp):
-			m.cursor -= m.Height - (2 + m.HeaderLines + m.FooterLines)
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
+			m.Viewport.PageUp()
 
 		case key.Matches(msg, DefaultKeyMap.PageDown):
-			m.cursor += m.Height - (2 + m.HeaderLines + m.FooterLines)
-			if m.cursor >= m.Lines {
-				m.cursor = m.Lines - 1
-			}
+			m.Viewport.PageDown()
 
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
 		}
 
 	case tea.WindowSizeMsg:
-		m.Width = msg.Width
-		m.Height = msg.Height
-
+		m.Viewport.SetWidth(msg.Width)
+		m.Viewport.SetHeight(msg.Height - 2) // account for header and footer
 	}
-
-	m.fixOffset()
 
 	// Return the updated model to the Bubble Tea runtime for processing.
 	// Note that we're not returning a command.
@@ -108,28 +78,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the contents of the scroller. It is intended to be implemented
 // by the class embedding the scroller.
 func (m Model) View() string {
-	return ""
-}
-
-func (m *Model) fixOffset() {
-	// Fix cursor location
-	if m.cursor > m.Lines-1 {
-		m.cursor = m.Lines - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-
-	// cursor before offset - offset needs to be decreased
-	if m.cursor < m.offset {
-		m.offset = m.cursor
-	}
-
-	// cursor greater than offset + window size - offset needs to be increased
-	if m.cursor-m.offset+1 > m.Height-(m.HeaderLines+m.FooterLines+1) {
-		m.offset = m.cursor + 1 - m.Height + (m.HeaderLines + m.FooterLines + 1)
-	}
-	if m.offset < 0 {
-		m.offset = 0
-	}
+	s := header.Width(m.Viewport.Width()).Height(1).Render(m.Header) + "\n"
+	s += m.Viewport.View()
+	s += footer.Width(m.Viewport.Width()).Height(1).Render(fmt.Sprintf("%d / %d", m.Viewport.Pos()+1, m.Viewport.Len()))
+	return s
 }
