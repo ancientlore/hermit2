@@ -16,12 +16,9 @@ func NewTextModel(path string, prev tea.Model) tea.Model {
 		in = []byte(err.Error())
 	}
 
-	var v views.Text
-	v.SetText(string(in))
-
-	return scroller.Model{
-		Header:   path,
-		Viewport: &v,
-		Prev:     prev,
+	return scroller.Model[views.Text]{
+		Header: path,
+		Data:   views.NewText(string(in)),
+		Prev:   prev,
 	}
 }

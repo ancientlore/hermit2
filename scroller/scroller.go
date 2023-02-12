@@ -2,6 +2,7 @@ package scroller
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -9,25 +10,31 @@ import (
 )
 
 var (
-	header = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
-	footer = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	header    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	footer    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	normal    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	highlight = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
 )
 
 // Model implements scrolling behavior over a Viewer.
-type Model struct {
-	Header   string    // Header text
-	Viewport Viewer    // The view we are using
-	Prev     tea.Model // The previous model (for going back)
+type Model[T Viewer] struct {
+	Header string    // Header text
+	Data   T         // The view we are using
+	Prev   tea.Model // The previous model (for going back)
+	cursor int       // Current position of cursor
+	offset int       // The offset of the view (enables scrolling)
+	width  int       // The width of the current view
+	height int       // The height of the current view
 }
 
 // Init initializes the model.
-func (m Model) Init() tea.Cmd {
+func (m Model[T]) Init() tea.Cmd {
 	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
 
 // Update handles messages in order to implement scrolling.
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	// Is it a key press?
@@ -38,36 +45,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "up" keys move the cursor up
 		case key.Matches(msg, DefaultKeyMap.Up):
-			m.Viewport.Up()
+			m.cursor--
+			m.fixOffset()
 
 		// The "down" keys move the cursor down
 		case key.Matches(msg, DefaultKeyMap.Down):
-			m.Viewport.Down()
+			m.cursor++
+			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.Left):
 			if m.Prev != nil {
-				return m.Prev, func() tea.Msg { return tea.WindowSizeMsg{Width: m.Viewport.Width(), Height: m.Viewport.Height() + 2} }
+				return m.Prev, func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height + 2} }
 			}
 
 		case key.Matches(msg, DefaultKeyMap.Home):
-			m.Viewport.Home()
+			m.cursor = 0
+			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.End):
-			m.Viewport.End()
+			m.cursor = m.Data.Len() - 1
+			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.PageUp):
-			m.Viewport.PageUp()
+			m.cursor -= m.height - 1
+			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.PageDown):
-			m.Viewport.PageDown()
+			m.cursor += m.height - 1
+			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
 		}
 
 	case tea.WindowSizeMsg:
-		m.Viewport.SetWidth(msg.Width)
-		m.Viewport.SetHeight(msg.Height - 2) // account for header and footer
+		m.width = msg.Width
+		m.height = msg.Height - 2 // account for header and footer
+		m.fixOffset()
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -77,9 +91,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the contents of the scroller. It is intended to be implemented
 // by the class embedding the scroller.
-func (m Model) View() string {
-	s := header.Width(m.Viewport.Width()).Height(1).Render(m.Header) + "\n"
-	s += m.Viewport.View()
-	s += footer.Width(m.Viewport.Width()).Height(1).Render(fmt.Sprintf("%d / %d", m.Viewport.Pos()+1, m.Viewport.Len()))
+func (m Model[T]) View() string {
+	// Header
+	s := header.Width(m.width).Height(1).Render(m.Header) + "\n"
+
+	// Viewport
+	for i := m.offset; i < m.Data.Len() && i < m.height+m.offset; i++ {
+		style := normal.Width(m.width).Height(1).MaxWidth(m.width)
+		if m.cursor == i {
+			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
+		}
+		s += style.Render(style.Render(m.Data.At(i))) + "\n"
+	}
+	repeat := m.height - m.Data.Len()
+	if repeat > 0 {
+		s += strings.Repeat("\n", repeat)
+	}
+
+	// Footer
+	s += footer.Width(m.width).Height(1).Render(fmt.Sprintf("%d / %d", m.cursor+1, m.Data.Len()))
 	return s
+}
+
+// fixOffset fixes the cursor and offset locations to be consistent
+// with the requested changes. Changes could be the height, width,
+// or cursor position.
+func (m *Model[T]) fixOffset() {
+	// Fix cursor location
+	if m.cursor > m.Data.Len()-1 {
+		m.cursor = m.Data.Len() - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+
+	// cursor before offset - offset needs to be decreased
+	if m.cursor < m.offset {
+		m.offset = m.cursor
+	}
+
+	// cursor greater than offset + window size - offset needs to be increased
+	if m.cursor >= m.offset+m.height {
+		m.offset = m.cursor - m.height + 1
+	}
+	if m.offset < 0 {
+		m.offset = 0
+	}
 }
