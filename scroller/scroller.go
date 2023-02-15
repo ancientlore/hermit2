@@ -101,7 +101,7 @@ func (m Model[T]) View() string {
 		if m.cursor == i {
 			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
 		}
-		s += style.Render(style.Render(m.Data.At(i))) + "\n"
+		s += m.Data.Render(i, m.width, style) + "\n"
 	}
 	repeat := m.height - m.Data.Len()
 	if repeat > 0 {
