@@ -96,12 +96,24 @@ func (m Model[T]) View() string {
 	s := header.Width(m.width).Height(1).Render(m.Header) + "\n"
 
 	// Viewport
+	lines := 0
 	for i := m.offset; i < m.Data.Len() && i < m.height+m.offset; i++ {
 		style := normal.Width(m.width).Height(1).MaxWidth(m.width)
 		if m.cursor == i {
 			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
 		}
-		s += m.Data.Render(i, m.width, style) + "\n"
+		line := m.Data.Render(i, m.width, style) + "\n"
+		_, h := lipgloss.Size(line)
+		lines += h
+		/*
+			if lines > m.height {
+				if m.cursor > m.offset+lines {
+					m.cursor = m.offset + lines - h
+				}
+				break
+			}
+		*/
+		s += line
 	}
 	repeat := m.height - m.Data.Len()
 	if repeat > 0 {
@@ -109,7 +121,7 @@ func (m Model[T]) View() string {
 	}
 
 	// Footer
-	s += footer.Width(m.width).Height(1).Render(fmt.Sprintf("%d / %d", m.cursor+1, m.Data.Len()))
+	s += footer.Width(m.width).Height(1).Render(fmt.Sprintf("%d / %d    lines=%d", m.cursor+1, m.Data.Len(), lines))
 	return s
 }
 
