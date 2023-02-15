@@ -236,14 +236,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newModel.cursor = 0
 				}
 			}
-			newModel.fixOffset()
 			return newModel, func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height} }
 		}
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-
+		m.fixOffset()
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
