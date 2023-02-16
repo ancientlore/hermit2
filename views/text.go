@@ -23,7 +23,7 @@ func (v Text) Len() int {
 	return len(v)
 }
 
-// SplitText expands tabs and splits the string into a slice of lines.
+// NewText expands tabs and splits the string into a slice of lines.
 func NewText(t string) Text {
 	return strings.Split(xstrings.ExpandTabs(strings.ReplaceAll(t, "\r", ""), 8), "\n")
 }
