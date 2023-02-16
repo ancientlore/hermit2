@@ -102,20 +102,23 @@ func (m Model[T]) View() string {
 		if m.cursor == i {
 			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
 		}
-		line := m.Data.Render(i, m.width, style) + "\n"
+		line := m.Data.Render(i, m.width, style)
 		_, h := lipgloss.Size(line)
-		lines += h
+
 		/*
-			if lines > m.height {
+			if lines+h > m.height {
 				if m.cursor > m.offset+lines {
-					m.cursor = m.offset + lines - h
+					m.cursor = m.offset + lines
 				}
 				break
 			}
 		*/
-		s += line
+
+		lines += h
+		s += line + "\n"
 	}
-	repeat := m.height - m.Data.Len()
+	//repeat := m.height - m.Data.Len()
+	repeat := m.height - lines
 	if repeat > 0 {
 		s += strings.Repeat("\n", repeat)
 	}
