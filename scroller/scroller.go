@@ -128,6 +128,27 @@ func (m Model[T]) View() string {
 	return s
 }
 
+// Cursor returns the position of the cursor.
+func (m Model[T]) Cursor() int {
+	return m.cursor
+}
+
+// BumpCursor moves the cursor down, like after a select operation.
+func (m *Model[T]) BumpCursor() {
+	m.cursor++
+	m.fixOffset()
+}
+
+// Width returns the width of the view.
+func (m Model[T]) Width() int {
+	return m.width
+}
+
+// Height returns the height of the view.
+func (m Model[T]) Height() int {
+	return m.height + 2
+}
+
 // fixOffset fixes the cursor and offset locations to be consistent
 // with the requested changes. Changes could be the height, width,
 // or cursor position.

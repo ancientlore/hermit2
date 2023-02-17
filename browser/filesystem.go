@@ -11,6 +11,19 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const (
+	timeFormatOld = "Mon Jan _2  2006"
+	timeFormatNew = "Mon Jan _2 15:04"
+)
+
+var (
+	normal      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	bold        = lipgloss.NewStyle().Foreground(lipgloss.Color("#AA00AA"))
+	special     = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
+	specialbold = lipgloss.NewStyle().Foreground(lipgloss.Color("#770077"))
+)
+
+// FSView is a viewer for a fs.FS.
 type FSView struct {
 	fsys     fs.FS         // The filesystem being browsed
 	root     string        // The name for the root of the file system
@@ -20,38 +33,52 @@ type FSView struct {
 }
 
 // Folder returns the name of the current folder.
-func (fs FSView) Folder() string {
-	return filepath.Join(fs.root, filepath.FromSlash(fs.folder))
+func (fsv FSView) Folder() string {
+	return filepath.Join(fsv.root, filepath.FromSlash(fsv.folder))
 }
 
 // At returns the directory entry at position i.
-func (fs FSView) At(i int) fs.DirEntry {
-	if i >= 0 && i < len(fs.entries) {
-		return fs.entries[i]
+func (fsv FSView) At(i int) fs.DirEntry {
+	if i >= 0 && i < len(fsv.entries) {
+		return fsv.entries[i]
 	}
 	return nil
 }
 
 // Selected returns whether the entry at position i is selected.
-func (fs FSView) Selected(i int) bool {
-	if i >= 0 && i < len(fs.selected) {
-		return fs.selected[i]
+func (fsv FSView) Selected(i int) bool {
+	if i >= 0 && i < len(fsv.selected) {
+		return fsv.selected[i]
 	}
 	return false
 }
 
+// Select sets the selected flag at position i to b.
+func (fsv *FSView) Select(i int, b bool) {
+	if i >= 0 && i < len(fsv.selected) {
+		fsv.selected[i] = b
+	}
+}
+
+// ToggleSelect toggles the selected flag at position i.
+func (fsv *FSView) ToggleSelect(i int) {
+	if i >= 0 && i < len(fsv.selected) {
+		fsv.selected[i] = !fsv.selected[i]
+	}
+}
+
 // Len returns the number of file entries.
-func (fs FSView) Len() int {
-	return len(fs.entries)
+func (fsv FSView) Len() int {
+	return len(fsv.entries)
 }
 
 // Render formats the line at position i using the base style and view width.
-func (fs FSView) Render(i, width int, baseStyle lipgloss.Style) string {
+func (fsv FSView) Render(i, width int, baseStyle lipgloss.Style) string {
 	var s string
-	choice := fs.entries[i]
+	choice := fsv.entries[i]
 	// Is this choice selected?
 	checked := " " // not selected
-	if fs.selected[i] {
+	if fsv.selected[i] {
 		checked = "*" // selected!
 	}
 
@@ -73,7 +100,7 @@ func (fs FSView) Render(i, width int, baseStyle lipgloss.Style) string {
 		} else if strings.HasPrefix(choice.Name(), ".") {
 			ns = special
 		}
-		s = baseStyle.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name()))) + "\n"
+		s = baseStyle.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name())))
 	} else {
 		ns := normal
 		if choice.IsDir() {
@@ -84,27 +111,28 @@ func (fs FSView) Render(i, width int, baseStyle lipgloss.Style) string {
 		} else if strings.HasPrefix(choice.Name(), ".") {
 			ns = special
 		}
-		s = baseStyle.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, "?", 0, "", ns.Render(choice.Name()))) + "\n"
+		s = baseStyle.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, "?", 0, "", ns.Render(choice.Name())))
 	}
 	return s
 }
 
-// NewFileSystem creates a new file system view.
-func NewFileSystem(fsys fs.FS, root, folder string) (*FSView, error) {
+// Init initializes a new file system view.
+func (fsv *FSView) Init(fsys fs.FS, root, folder string) error {
 	rf := strings.TrimPrefix(folder, "/")
 	if len(rf) == 0 {
 		rf = "."
 	}
 	entries, err := fs.ReadDir(fsys, rf)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sort.Sort(sortByExt(entries))
-	return &FSView{
-		entries:  entries,
-		selected: make([]bool, len(entries)),
-		root:     root,
-		folder:   folder,
-		fsys:     fsys,
-	}, nil
+
+	fsv.entries = entries
+	fsv.selected = make([]bool, len(entries))
+	fsv.root = root
+	fsv.folder = folder
+	fsv.fsys = fsys
+
+	return nil
 }
