@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// Open tea with and run the initial model
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(*m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v\n", err)
 		os.Exit(1)

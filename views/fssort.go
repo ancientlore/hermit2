@@ -1,4 +1,4 @@
-package browser
+package views
 
 import (
 	"io/fs"

@@ -1,4 +1,4 @@
-package browser
+package views
 
 import (
 	"fmt"
@@ -23,8 +23,8 @@ var (
 	specialbold = lipgloss.NewStyle().Foreground(lipgloss.Color("#770077"))
 )
 
-// FSView is a viewer for a fs.FS.
-type FSView struct {
+// FS is a viewer for a fs.FS.
+type FS struct {
 	fsys     fs.FS         // The filesystem being browsed
 	root     string        // The name for the root of the file system
 	folder   string        // The current folder in the file system
@@ -32,13 +32,28 @@ type FSView struct {
 	selected []bool        // Whether an entry is selected
 }
 
-// Folder returns the name of the current folder.
-func (fsv FSView) Folder() string {
+// Title returns the full name of the current folder.
+func (fsv FS) Title() string {
 	return filepath.Join(fsv.root, filepath.FromSlash(fsv.folder))
 }
 
+// Folder returns the current folder in the file system.
+func (fsv FS) Folder() string {
+	return fsv.folder
+}
+
+// Root returns the name of the root file system.
+func (fsv FS) Root() string {
+	return fsv.root
+}
+
+// FS returns the file system being viewed.
+func (fsv FS) FS() fs.FS {
+	return fsv.fsys
+}
+
 // At returns the directory entry at position i.
-func (fsv FSView) At(i int) fs.DirEntry {
+func (fsv FS) At(i int) fs.DirEntry {
 	if i >= 0 && i < len(fsv.entries) {
 		return fsv.entries[i]
 	}
@@ -46,7 +61,7 @@ func (fsv FSView) At(i int) fs.DirEntry {
 }
 
 // Selected returns whether the entry at position i is selected.
-func (fsv FSView) Selected(i int) bool {
+func (fsv FS) Selected(i int) bool {
 	if i >= 0 && i < len(fsv.selected) {
 		return fsv.selected[i]
 	}
@@ -54,26 +69,26 @@ func (fsv FSView) Selected(i int) bool {
 }
 
 // Select sets the selected flag at position i to b.
-func (fsv *FSView) Select(i int, b bool) {
+func (fsv *FS) Select(i int, b bool) {
 	if i >= 0 && i < len(fsv.selected) {
 		fsv.selected[i] = b
 	}
 }
 
 // ToggleSelect toggles the selected flag at position i.
-func (fsv *FSView) ToggleSelect(i int) {
+func (fsv *FS) ToggleSelect(i int) {
 	if i >= 0 && i < len(fsv.selected) {
 		fsv.selected[i] = !fsv.selected[i]
 	}
 }
 
 // Len returns the number of file entries.
-func (fsv FSView) Len() int {
+func (fsv FS) Len() int {
 	return len(fsv.entries)
 }
 
 // Render formats the line at position i using the base style and view width.
-func (fsv FSView) Render(i, width int, baseStyle lipgloss.Style) string {
+func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 	var s string
 	choice := fsv.entries[i]
 	// Is this choice selected?
@@ -117,7 +132,7 @@ func (fsv FSView) Render(i, width int, baseStyle lipgloss.Style) string {
 }
 
 // Footer formats the footer using the base style and view width.
-func (fsv FSView) Footer(i, width int, baseStyle lipgloss.Style) string {
+func (fsv FS) Footer(i, width int, baseStyle lipgloss.Style) string {
 	sel := 0
 	for i := range fsv.selected {
 		if fsv.selected[i] {
@@ -128,7 +143,7 @@ func (fsv FSView) Footer(i, width int, baseStyle lipgloss.Style) string {
 }
 
 // Init initializes a new file system view.
-func (fsv *FSView) Init(fsys fs.FS, root, folder string) error {
+func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 	rf := strings.TrimPrefix(folder, "/")
 	if len(rf) == 0 {
 		rf = "."

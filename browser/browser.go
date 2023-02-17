@@ -13,6 +13,7 @@ import (
 
 	"github.com/ancientlore/hermit2/config"
 	"github.com/ancientlore/hermit2/scroller"
+	"github.com/ancientlore/hermit2/views"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,17 +24,17 @@ func refreshCmd() tea.Msg {
 	return refreshMsg{}
 }
 
-type model struct {
-	scroller.Model[FSView]
+type Model struct {
+	scroller.Model[views.FS]
 	footer string
 }
 
-func (m model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	handled := true
 
 	switch msg := msg.(type) {
@@ -50,7 +51,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			entry := m.Data.At(m.Cursor())
 			if entry != nil {
 				if entry.IsDir() {
-					newModel, err := New(m.Data.fsys, m.Data.root, path.Join(m.Data.folder, m.Data.At(m.Cursor()).Name()))
+					newModel, err := New(m.Data.FS(), m.Data.Root(), path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()))
 					if err != nil {
 						m.footer = err.Error()
 					} else {
@@ -58,16 +59,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return *newModel, sizeCmd
 					}
 				} else if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
-					return NewTextModel(path.Join(m.Data.folder, m.Data.At(m.Cursor()).Name()), m), sizeCmd
+					return NewTextModel(path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()), m), sizeCmd
 				} else if entry.Type().IsRegular() {
-					f, err := os.Open(path.Join(m.Data.folder, m.Data.At(m.Cursor()).Name()))
+					f, err := os.Open(path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()))
 					if err == nil {
 						defer f.Close()
 						b := make([]byte, 512)
 						n, err := f.Read(b)
 						if err == nil {
 							if strings.HasPrefix(http.DetectContentType(b[0:n]), "text") {
-								return NewTextModel(path.Join(m.Data.folder, m.Data.At(m.Cursor()).Name()), m), sizeCmd
+								return NewTextModel(path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()), m), sizeCmd
 							}
 						} else {
 							m.footer = err.Error()
@@ -82,12 +83,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Prev != nil {
 				return m.Prev, sizeCmd
 			}
-			a, _ := path.Split(m.Data.folder)
+			a, _ := path.Split(m.Data.Folder())
 			if a != "/" {
 				a = strings.TrimSuffix(a, "/")
 			}
-			if a != m.Data.folder {
-				newModel, err := New(m.Data.fsys, m.Data.root, a)
+			if a != m.Data.Folder() {
+				newModel, err := New(m.Data.FS(), m.Data.Root(), a)
 				if err != nil {
 					log.Print(err)
 				} else {
@@ -137,7 +138,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.RunShell):
 			c := exec.Command(config.Shell())
-			c.Dir = filepath.Join(m.Data.root, filepath.FromSlash(m.Data.folder))
+			c.Dir = filepath.Join(m.Data.Root(), filepath.FromSlash(m.Data.Folder()))
 			cmd := tea.ExecProcess(c, nil)
 			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd, sizeCmd)
 
@@ -146,7 +147,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case refreshMsg:
-		err := m.Data.Init(m.Data.fsys, m.Data.root, m.Data.folder)
+		err := m.Data.Init(m.Data.FS(), m.Data.Root(), m.Data.Folder())
 		if err != nil {
 			log.Print(err)
 		} else {
@@ -159,7 +160,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if !handled {
 		mod, cmd := m.Model.Update(msg)
-		if scr, ok := mod.(scroller.Model[FSView]); ok {
+		if scr, ok := mod.(scroller.Model[views.FS]); ok {
 			m.Model = scr
 			return m, cmd
 		}
@@ -171,12 +172,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func New(fsys fs.FS, root, folder string) (*model, error) {
-	var m model
+func New(fsys fs.FS, root, folder string) (*Model, error) {
+	var m Model
 	err := m.Model.Data.Init(fsys, root, folder)
 	if err != nil {
 		return nil, err
 	}
-	m.Header = m.Data.Folder()
+	m.Header = m.Data.Title()
 	return &m, nil
 }
