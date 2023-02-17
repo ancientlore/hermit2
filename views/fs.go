@@ -152,13 +152,14 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 	if err != nil {
 		return err
 	}
-	sort.Sort(sortByExt(entries))
 
 	fsv.entries = entries
 	fsv.selected = make([]bool, len(entries))
 	fsv.root = root
 	fsv.folder = folder
 	fsv.fsys = fsys
+
+	sort.Sort(sortByExt(*fsv))
 
 	return nil
 }
