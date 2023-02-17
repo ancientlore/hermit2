@@ -6,5 +6,6 @@ import "github.com/charmbracelet/lipgloss"
 // scrolling and pagination.
 type Viewer interface {
 	Render(i, width int, baseStyle lipgloss.Style) string // Renders the line at position i
+	Footer(i, width int, baseStyle lipgloss.Style) string // Renders the footer
 	Len() int                                             // Length of data
 }

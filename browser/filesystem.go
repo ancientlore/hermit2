@@ -116,6 +116,17 @@ func (fsv FSView) Render(i, width int, baseStyle lipgloss.Style) string {
 	return s
 }
 
+// Footer formats the footer using the base style and view width.
+func (fsv FSView) Footer(i, width int, baseStyle lipgloss.Style) string {
+	sel := 0
+	for i := range fsv.selected {
+		if fsv.selected[i] {
+			sel++
+		}
+	}
+	return baseStyle.Render(fmt.Sprintf("Ctrl+C to exit    %d / %d selected", sel, len(fsv.entries)))
+}
+
 // Init initializes a new file system view.
 func (fsv *FSView) Init(fsys fs.FS, root, folder string) error {
 	rf := strings.TrimPrefix(folder, "/")

@@ -1,7 +1,6 @@
 package scroller
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -124,7 +123,7 @@ func (m Model[T]) View() string {
 	}
 
 	// Footer
-	s += footer.Width(m.width).Height(1).Render(fmt.Sprintf("%d / %d    lines=%d", m.cursor+1, m.Data.Len(), lines))
+	s += m.Data.Footer(m.cursor, m.width, footer.Width(m.width).Height(1))
 	return s
 }
 

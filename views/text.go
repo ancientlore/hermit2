@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -16,6 +17,11 @@ func (v Text) Render(i, width int, baseStyle lipgloss.Style) string {
 		return baseStyle.Render(v[i])
 	}
 	return ""
+}
+
+// Footer formats the footer using the base style and view width.
+func (v Text) Footer(cursor, width int, baseStyle lipgloss.Style) string {
+	return baseStyle.Render(fmt.Sprintf("%d / %d", cursor+1, len(v)))
 }
 
 // Len returns the number of lines of text.
