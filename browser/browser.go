@@ -115,15 +115,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// the selected state for the item that the cursor is pointing at.
 		case key.Matches(msg, DefaultKeyMap.ToggleSelect):
 			m.Data.ToggleSelect(m.Cursor())
-			m.BumpCursor()
+			m.MoveCursor(1)
 
 		case key.Matches(msg, DefaultKeyMap.Select):
 			m.Data.Select(m.Cursor(), true)
-			m.BumpCursor()
+			m.MoveCursor(1)
 
 		case key.Matches(msg, DefaultKeyMap.DeSelect):
 			m.Data.Select(m.Cursor(), false)
-			m.BumpCursor()
+			m.MoveCursor(1)
 
 		case key.Matches(msg, DefaultKeyMap.SelectAll):
 			for i := 0; i < m.Data.Len(); i++ {

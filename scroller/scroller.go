@@ -132,9 +132,9 @@ func (m Model[T]) Cursor() int {
 	return m.cursor
 }
 
-// BumpCursor moves the cursor down, like after a select operation.
-func (m *Model[T]) BumpCursor() {
-	m.cursor++
+// MoveCursor moves the cursor by delta.
+func (m *Model[T]) MoveCursor(delta int) {
+	m.cursor += delta
 	m.fixOffset()
 }
 
