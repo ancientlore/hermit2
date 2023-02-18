@@ -18,7 +18,7 @@ func NewTextModel(path string, prev tea.Model) tea.Model {
 
 	return scroller.Model[views.Text]{
 		Header: path,
-		Data:   views.NewText(string(in)),
+		Data:   views.NewText(string(in), path),
 		Prev:   prev,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma"
+	"github.com/alecthomas/chroma/lexers"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/alecthomas/chroma/styles"
 	"github.com/charmbracelet/lipgloss"
@@ -34,17 +35,17 @@ func (v Text) Len() int {
 }
 
 // NewText expands tabs and splits the string into a slice of lines.
-func NewText(t string) Text {
-	/*
-		var lexer string
-		if l := lexers.Match(path); l != nil {
-			lexer = l.Config().Name
-		}
-	*/
+func NewText(t string, fpath string) Text {
+
+	var lexer string
+	if l := lexers.Match(fpath); l != nil {
+		lexer = l.Config().Name
+	}
+
 	s := xstrings.ExpandTabs(strings.ReplaceAll(t, "\r", ""), 8)
 
 	var buf bytes.Buffer
-	err := quick.Highlight(&buf, s, "", "terminal256", "hermit")
+	err := quick.Highlight(&buf, s, lexer, "terminal256", "hermit")
 	if err == nil {
 		s = buf.String()
 	}
