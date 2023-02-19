@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -13,6 +14,7 @@ import (
 type Binary struct {
 	io.ReadSeekCloser
 	size int64
+	b    []byte
 }
 
 // Render formats the line at position i using the base style and view width.
@@ -22,19 +24,28 @@ func (v Binary) Render(i, width int, baseStyle lipgloss.Style) string {
 	if err != nil {
 		return baseStyle.Blink(true).Render(err.Error())
 	}
-	b := make([]byte, w)
-	n, err := v.Read(b)
+	if len(v.b) != w {
+		v.b = make([]byte, w)
+	}
+	n, err := v.Read(v.b)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return baseStyle.Blink(true).Render(err.Error())
 	}
-	s := fmt.Sprintf("%X%s ", b[0:n], strings.Repeat("  ", w-n))
-
-	return baseStyle.Render(s)
+	s := fmt.Sprintf("% X%s  ", v.b[0:n], strings.Repeat("  ", w-n))
+	var x strings.Builder
+	for i := 0; i < n; i++ {
+		if unicode.IsPrint(rune(v.b[i])) {
+			x.WriteRune(rune(v.b[i]))
+		} else {
+			x.WriteRune('.')
+		}
+	}
+	return baseStyle.Render(s + x.String())
 }
 
 // Footer formats the footer using the base style and view width.
 func (v Binary) Footer(cursor, width int, baseStyle lipgloss.Style) string {
-	return baseStyle.Render(fmt.Sprintf("%d / %d bytes", cursor*dataWidth(width), v.size))
+	return baseStyle.Render(fmt.Sprintf("%d / %d bytes (%d bytes per row)", cursor*dataWidth(width), v.size, dataWidth(width)))
 }
 
 // Len returns the number of lines of text.
@@ -61,7 +72,7 @@ func NewBinary(rdr io.ReadSeekCloser) (*Binary, error) {
 
 func dataWidth(width int) int {
 	// BBBB BBBB BBBB BBBB 12345678
-	w := width / 3
+	w := (width-2)/4 - ((width-2)/4)%8
 	if w <= 0 {
 		w = 1
 	}
