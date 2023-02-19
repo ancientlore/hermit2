@@ -83,8 +83,13 @@ func (fsv *FS) ToggleSelect(i int) {
 }
 
 // Len returns the number of file entries.
-func (fsv FS) Len() int {
+func (fsv FS) Len(width int) int {
 	return len(fsv.entries)
+}
+
+// Close closes the viewer, if necessary.
+func (fsv FS) Close() error {
+	return nil
 }
 
 // Render formats the line at position i using the base style and view width.

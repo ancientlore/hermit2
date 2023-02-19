@@ -54,6 +54,7 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.Left):
 			if m.Prev != nil {
+				m.Data.Close()
 				return m.Prev, func() tea.Msg { return tea.WindowSizeMsg{Width: m.width, Height: m.height + 2} }
 			}
 
@@ -62,7 +63,7 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.End):
-			m.cursor = m.Data.Len() - 1
+			m.cursor = m.Data.Len(m.width) - 1
 			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.PageUp):
@@ -74,6 +75,7 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.Quit):
+			m.Data.Close()
 			return m, tea.Quit
 		}
 
@@ -96,7 +98,7 @@ func (m Model[T]) View() string {
 
 	// Viewport
 	lines := 0
-	for i := m.offset; i < m.Data.Len() && i < m.height+m.offset; i++ {
+	for i := m.offset; i < m.Data.Len(m.width) && i < m.height+m.offset; i++ {
 		style := normal.Width(m.width).Height(1).MaxWidth(m.width)
 		if m.cursor == i {
 			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
@@ -153,8 +155,8 @@ func (m Model[T]) Height() int {
 // or cursor position.
 func (m *Model[T]) fixOffset() {
 	// Fix cursor location
-	if m.cursor > m.Data.Len()-1 {
-		m.cursor = m.Data.Len() - 1
+	if m.cursor > m.Data.Len(m.width)-1 {
+		m.cursor = m.Data.Len(m.width) - 1
 	}
 	if m.cursor < 0 {
 		m.cursor = 0

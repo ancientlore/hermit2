@@ -2,6 +2,7 @@ package browser
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -21,7 +22,6 @@ func NewFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (t
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
 
 		var rdr io.Reader
 		rdr = f
@@ -34,7 +34,8 @@ func NewFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (t
 			// Check by inspecting the file
 			b := make([]byte, 512)
 			n, err := f.Read(b)
-			if err != nil {
+			if err != nil && !errors.Is(err, io.EOF) {
+				f.Close()
 				return nil, err
 			}
 			if strings.HasPrefix(http.DetectContentType(b[0:n]), "text") {
@@ -44,10 +45,21 @@ func NewFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (t
 		}
 
 		if isText {
-			return NewTextModel(rdr, path.Join(folder, entry.Name()), prev)
+			m, err := NewTextModel(rdr, path.Join(folder, entry.Name()), prev)
+			f.Close()
+			return m, err
+		} else if rs, ok := rdr.(io.ReadSeekCloser); ok {
+			m, err := NewBinaryModel(rs, path.Join(folder, entry.Name()), prev)
+			if err != nil {
+				f.Close()
+				// otherwise Viewer owns the file
+			}
+			return m, err
+		} else {
+			f.Close()
 		}
 	}
-	return nil, fmt.Errorf("not a text file")
+	return nil, fmt.Errorf("not a viewable file")
 }
 
 // NewTextModel creates a new model to view a text file.
@@ -60,6 +72,19 @@ func NewTextModel(rdr io.Reader, path string, prev tea.Model) (tea.Model, error)
 	return scroller.Model[views.Text]{
 		Header: path,
 		Data:   views.NewText(string(b), path),
+		Prev:   prev,
+	}, nil
+}
+
+// NewBinaryModel creates a new model to view a binary file.
+func NewBinaryModel(rdr io.ReadSeekCloser, path string, prev tea.Model) (tea.Model, error) {
+	b, err := views.NewBinary(rdr)
+	if err != nil {
+		return nil, err
+	}
+	return scroller.Model[views.Binary]{
+		Header: path,
+		Data:   *b,
 		Prev:   prev,
 	}, nil
 }

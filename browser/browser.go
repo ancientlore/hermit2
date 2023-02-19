@@ -114,12 +114,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.MoveCursor(1)
 
 		case key.Matches(msg, DefaultKeyMap.SelectAll):
-			for i := 0; i < m.Data.Len(); i++ {
+			for i := 0; i < m.Data.Len(m.Width()); i++ {
 				m.Data.Select(i, true)
 			}
 
 		case key.Matches(msg, DefaultKeyMap.DeSelectAll):
-			for i := 0; i < m.Data.Len(); i++ {
+			for i := 0; i < m.Data.Len(m.Width()); i++ {
 				m.Data.Select(i, false)
 			}
 

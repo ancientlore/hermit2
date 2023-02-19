@@ -30,8 +30,13 @@ func (v Text) Footer(cursor, width int, baseStyle lipgloss.Style) string {
 }
 
 // Len returns the number of lines of text.
-func (v Text) Len() int {
+func (v Text) Len(width int) int {
 	return len(v)
+}
+
+// Close closes the viewer, if necessary.
+func (v Text) Close() error {
+	return nil
 }
 
 // NewText expands tabs and splits the string into a slice of lines.
