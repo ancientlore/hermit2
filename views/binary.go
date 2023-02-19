@@ -31,7 +31,7 @@ func (v Binary) Render(i, width int, baseStyle lipgloss.Style) string {
 	if err != nil && !errors.Is(err, io.EOF) {
 		return baseStyle.Blink(true).Render(err.Error())
 	}
-	s := fmt.Sprintf("% X%s  ", v.b[0:n], strings.Repeat("  ", w-n))
+	s := fmt.Sprintf("% X%s  ", v.b[0:n], strings.Repeat("   ", w-n))
 	var x strings.Builder
 	for i := 0; i < n; i++ {
 		if unicode.IsPrint(rune(v.b[i])) {

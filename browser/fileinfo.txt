@@ -1,0 +1,15 @@
+
+Name:     {{.Name}}{{if .IsDir}} (directory){{end}}
+
+Mod Time: {{.Info.ModTime.Local}}
+          {{.Info.ModTime.UTC}}
+
+Size:     {{.Info.Size}} bytes
+          {{div .Info.Size 1024}} KB
+          {{div .Info.Size 1048576}} MB
+          {{div .Info.Size 1073741824}} GB
+
+Mode:     {{.Info.Mode}}
+{{range mode .Info.Mode}}          {{.}}
+{{end}}
+System:   {{printf "%#v" .Info.Sys}}

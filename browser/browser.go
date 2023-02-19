@@ -129,6 +129,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := tea.ExecProcess(c, nil)
 			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd, sizeCmd)
 
+		case key.Matches(msg, DefaultKeyMap.Help):
+
+		case key.Matches(msg, DefaultKeyMap.FileInfo):
+			entry := m.Data.At(m.Cursor())
+			if entry != nil {
+				newModel, err := NewFileInfoModel(m.Data.FS(), m.Data.Folder(), entry, m)
+				if err == nil {
+					return newModel, sizeCmd
+				} else {
+					m.footer = err.Error()
+				}
+			}
+
+		case key.Matches(msg, DefaultKeyMap.ViewBinary):
+			entry := m.Data.At(m.Cursor())
+			if entry != nil {
+				newModel, err := NewBinaryFileModel(m.Data.FS(), m.Data.Folder(), entry, m)
+				if err == nil {
+					return newModel, sizeCmd
+				} else {
+					m.footer = err.Error()
+				}
+			}
+
 		default:
 			handled = false
 		}
