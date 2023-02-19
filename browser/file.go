@@ -196,3 +196,25 @@ func NewFileInfoModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model
 	rdr := bytes.NewReader(wtr.Bytes())
 	return NewTextModel(rdr, path.Join(folder, entry.Name()), prev)
 }
+
+type helpInfo struct {
+	ScrollKeys  *scroller.KeyMap
+	BrowserKeys *KeyMap
+}
+
+// NewHelpMode creates a new model to view help text.
+func NewHelpModel(prev tea.Model) (tea.Model, error) {
+	var wtr bytes.Buffer
+	h := &helpInfo{
+		ScrollKeys:  &scroller.DefaultKeyMap,
+		BrowserKeys: &DefaultKeyMap,
+	}
+
+	err := templates.ExecuteTemplate(&wtr, "help.txt", h)
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+	rdr := bytes.NewReader(wtr.Bytes())
+	return NewTextModel(rdr, "HERMIT Help", prev)
+}

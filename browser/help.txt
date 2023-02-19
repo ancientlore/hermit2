@@ -1,0 +1,36 @@
+
+Welcome to Hermit!
+
+Hermit is a terminal-based file browser that likes to get in your shell
+and help you out.
+
+Commands common to all scrolling views:
+
+    {{with .ScrollKeys.Up.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ScrollKeys.Down.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ScrollKeys.PageUp.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ScrollKeys.PageDown.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ScrollKeys.Home.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ScrollKeys.End.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .ScrollKeys.Left.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .ScrollKeys.Quit.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+Commands in the main browser:
+
+    {{with .BrowserKeys.Select.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.DeSelect.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.ToggleSelect.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.SelectAll.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.DeSelectAll.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .BrowserKeys.Refresh.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.GoHome.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.RunShell.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .BrowserKeys.Right.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.FileInfo.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.ViewBinary.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .BrowserKeys.Help.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}

@@ -61,7 +61,7 @@ var DefaultKeyMap = KeyMap{
 	),
 	Help: key.NewBinding(
 		key.WithKeys("alt+h", "ctrl+h", "?"),
-		key.WithHelp("alt+h/ctrl+h/?", "show help"),
+		key.WithHelp("?", "show help"),
 	),
 	ViewBinary: key.NewBinding(
 		key.WithKeys("#"),

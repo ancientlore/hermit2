@@ -130,6 +130,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(tea.ClearScreen, cmd, refreshCmd, sizeCmd)
 
 		case key.Matches(msg, DefaultKeyMap.Help):
+			newModel, err := NewHelpModel(m)
+			if err == nil {
+				return newModel, sizeCmd
+			} else {
+				m.footer = err.Error()
+			}
 
 		case key.Matches(msg, DefaultKeyMap.FileInfo):
 			entry := m.Data.At(m.Cursor())
