@@ -98,30 +98,45 @@ func (m Model[T]) View() string {
 
 	// Viewport
 	lines := 0
+	cursorStart := 0
+	cursorEnd := 0
 	for i := m.offset; i < m.Data.Len(m.width) && i < m.height+m.offset; i++ {
 		style := normal.Width(m.width).Height(1).MaxWidth(m.width)
 		if m.cursor == i {
 			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
+			cursorStart = lines
 		}
 		line := m.Data.Render(i, m.width, style)
 		_, h := lipgloss.Size(line)
-
-		/*
-			if lines+h > m.height {
-				if m.cursor > m.offset+lines {
-					m.cursor = m.offset + lines
-				}
-				break
-			}
-		*/
-
+		if m.cursor == i {
+			cursorEnd = lines + h
+		}
 		lines += h
 		s += line + "\n"
 	}
-	//repeat := m.height - m.Data.Len()
+
+	// TODO(michael.lore): Should make this more efficient at some point.
 	repeat := m.height - lines
 	if repeat > 0 {
+		// Too few lines
 		s += strings.Repeat("\n", repeat)
+	} else if repeat < 0 {
+		// Too many lines (due to text wrap)
+		// a[0] is the header
+		a := strings.Split(s, "\n")
+
+		if cursorEnd > m.height {
+			// take off from the front
+			s = strings.Join(append(a[0:1], a[1-repeat:]...), "\n")
+		} else if cursorStart < -repeat {
+			// take from back
+			s = strings.Join(a[0:len(a)-1+repeat], "\n") + "\n"
+		} else {
+			// take equally from both
+			r1 := -repeat / 2
+			r2 := r1 - repeat%2
+			s = strings.Join(append(a[0:1], a[r1:len(a)-1-r2]...), "\n") + "\n"
+		}
 	}
 
 	// Footer
