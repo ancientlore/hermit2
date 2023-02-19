@@ -1,15 +1,19 @@
 
-Name:     {{.Name}}{{if .IsDir}} (directory){{end}}
+Name:      {{.Name}}{{if .IsDir}} (directory){{end}}
 
-Mod Time: {{.Info.ModTime.Local}}
-          {{.Info.ModTime.UTC}}
+Mod Time:  {{.Info.ModTime.Local}}
+           {{.Info.ModTime.UTC}}
 
-Size:     {{.Info.Size}} bytes
-          {{div .Info.Size 1024}} KB
-          {{div .Info.Size 1048576}} MB
-          {{div .Info.Size 1073741824}} GB
-
-Mode:     {{.Info.Mode}}
-{{range mode .Info.Mode}}          {{.}}
+Size:      {{.Info.Size}} bytes
+           {{div .Info.Size 1024}} KB
+           {{div .Info.Size 1048576}} MB
+           {{div .Info.Size 1073741824}} GB
+{{$o := owner .Info.Sys}}{{if $o}}
+Owner:     {{$o}}
 {{end}}
-System:   {{printf "%#v" .Info.Sys}}
+Mode:      {{.Info.Mode}}
+{{range mode .Info.Mode}}           {{.}}
+{{end}}{{$m := mime .Name}}{{if $m}}
+Mime Type: {{$m}}
+{{end}}
+System:    {{printf "%#v" .Info.Sys}}

@@ -10,8 +10,11 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"os/user"
 	"path"
+	"strconv"
 	"strings"
+	"syscall"
 	"text/template"
 
 	"github.com/ancientlore/hermit2/scroller"
@@ -154,7 +157,48 @@ var templates = template.Must(
 			if m&fs.ModeIrregular != 0 {
 				a = append(a, "?: non-regular file; nothing else is known about this file")
 			}
+			perms := m & fs.ModePerm
+			s := []string{
+				"owner: ",
+				"group: ",
+				"other: ",
+			}
+			for i := 2; i >= 0; i-- {
+				var pa []string
+				if perms&04 != 0 {
+					pa = append(pa, "read")
+				}
+				if perms&02 != 0 {
+					pa = append(pa, "write")
+				}
+				if perms&01 != 0 {
+					pa = append(pa, "execute")
+				}
+				a = append(a, s[i]+strings.Join(pa, ", "))
+				perms >>= 3
+			}
+			p := len(a) - 1
+			a[p-2], a[p] = a[p], a[p-2] // show preferred order
 			return a
+		},
+		"mime": func(name string) string {
+			return mime.TypeByExtension(path.Ext(name))
+		},
+		"owner": func(s any) string {
+			var r string
+			if s != nil {
+				if ss, ok := s.(*syscall.Stat_t); ok {
+					g, err := user.LookupGroupId(strconv.Itoa(int(ss.Gid)))
+					if err == nil {
+						r += g.Name + ":"
+					}
+					u, err := user.LookupId(strconv.Itoa(int(ss.Uid)))
+					if err == nil {
+						r += u.Username
+					}
+				}
+			}
+			return r
 		},
 	}).ParseFS(templateFs, "*.txt"),
 )
