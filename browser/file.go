@@ -10,11 +10,8 @@ import (
 	"log"
 	"mime"
 	"net/http"
-	"os/user"
 	"path"
-	"strconv"
 	"strings"
-	"syscall"
 	"text/template"
 
 	"github.com/ancientlore/hermit2/scroller"
@@ -184,22 +181,7 @@ var templates = template.Must(
 		"mime": func(name string) string {
 			return mime.TypeByExtension(path.Ext(name))
 		},
-		"owner": func(s any) string {
-			var r string
-			if s != nil {
-				if ss, ok := s.(*syscall.Stat_t); ok {
-					g, err := user.LookupGroupId(strconv.Itoa(int(ss.Gid)))
-					if err == nil {
-						r += g.Name + ":"
-					}
-					u, err := user.LookupId(strconv.Itoa(int(ss.Uid)))
-					if err == nil {
-						r += u.Username
-					}
-				}
-			}
-			return r
-		},
+		"owner": owner,
 	}).ParseFS(templateFs, "*.txt"),
 )
 
