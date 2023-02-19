@@ -3,8 +3,6 @@ package browser
 import (
 	"io/fs"
 	"log"
-	"mime"
-	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -58,21 +56,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						newModel.Prev = m
 						return *newModel, sizeCmd
 					}
-				} else if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
-					return NewTextModel(path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()), m), sizeCmd
-				} else if entry.Type().IsRegular() {
-					f, err := os.Open(path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()))
+				} else {
+					newModel, err := NewFileModel(m.Data.FS(), m.Data.Folder(), entry, m)
 					if err == nil {
-						defer f.Close()
-						b := make([]byte, 512)
-						n, err := f.Read(b)
-						if err == nil {
-							if strings.HasPrefix(http.DetectContentType(b[0:n]), "text") {
-								return NewTextModel(path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()), m), sizeCmd
-							}
-						} else {
-							m.footer = err.Error()
-						}
+						return newModel, sizeCmd
 					} else {
 						m.footer = err.Error()
 					}
