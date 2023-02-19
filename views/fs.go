@@ -144,7 +144,7 @@ func (fsv FS) Footer(i, width int, baseStyle lipgloss.Style) string {
 			sel++
 		}
 	}
-	return baseStyle.Render(fmt.Sprintf("Ctrl+C to exit    %d / %d selected", sel, len(fsv.entries)))
+	return baseStyle.Render(fmt.Sprintf("? for help    %d / %d selected", sel, len(fsv.entries)))
 }
 
 // Init initializes a new file system view.
