@@ -9,7 +9,7 @@ import (
 
 	"github.com/ancientlore/hermit2/browser"
 	"github.com/ancientlore/hermit2/config"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// Open tea with and run the initial model
-	p := tea.NewProgram(*m, tea.WithAltScreen())
+	p := tea.NewProgram(*m)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v\n", err)
 		os.Exit(1)

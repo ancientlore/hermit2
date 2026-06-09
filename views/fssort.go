@@ -24,6 +24,7 @@ func (e sortByName) Len() int {
 
 func (e sortByName) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -46,6 +47,7 @@ func (e sortByNameRev) Len() int {
 
 func (e sortByNameRev) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -86,6 +88,7 @@ func (e sortByExt) Len() int {
 
 func (e sortByExt) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -128,6 +131,7 @@ func (e sortByExtRev) Len() int {
 
 func (e sortByExtRev) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -143,8 +147,15 @@ func (e sortBySize) Less(i, j int) bool {
 		return e.entries[i].Name() < e.entries[j].Name()
 	}
 	// Size next
-	infoi, _ := e.entries[i].Info()
-	infoj, _ := e.entries[j].Info()
+	infoi := e.infos[i]
+	infoj := e.infos[j]
+	if infoi == nil && infoj != nil {
+		return true
+	} else if infoi != nil && infoj == nil {
+		return false
+	} else if infoi == nil && infoj == nil {
+		return e.entries[i].Name() < e.entries[j].Name()
+	}
 	if infoi.Size() < infoj.Size() {
 		return true
 	} else if infoi.Size() == infoj.Size() {
@@ -160,6 +171,7 @@ func (e sortBySize) Len() int {
 
 func (e sortBySize) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -175,8 +187,15 @@ func (e sortBySizeRev) Less(i, j int) bool {
 		return e.entries[i].Name() < e.entries[j].Name()
 	}
 	// Size next
-	infoi, _ := e.entries[i].Info()
-	infoj, _ := e.entries[j].Info()
+	infoi := e.infos[i]
+	infoj := e.infos[j]
+	if infoi == nil && infoj != nil {
+		return false
+	} else if infoi != nil && infoj == nil {
+		return true
+	} else if infoi == nil && infoj == nil {
+		return e.entries[i].Name() < e.entries[j].Name()
+	}
 	if infoj.Size() < infoi.Size() {
 		return true
 	} else if infoi.Size() == infoj.Size() {
@@ -192,6 +211,7 @@ func (e sortBySizeRev) Len() int {
 
 func (e sortBySizeRev) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -213,11 +233,18 @@ func (e sortByDate) Less(i, j int) bool {
 		return false
 	}
 	// Date next
-	infoi, _ := e.entries[i].Info()
-	infoj, _ := e.entries[j].Info()
+	infoi := e.infos[i]
+	infoj := e.infos[j]
+	if infoi == nil && infoj != nil {
+		return true
+	} else if infoi != nil && infoj == nil {
+		return false
+	} else if infoi == nil && infoj == nil {
+		return e.entries[i].Name() < e.entries[j].Name()
+	}
 	if infoi.ModTime().Before(infoj.ModTime()) {
 		return true
-	} else if infoi.ModTime() == infoj.ModTime() {
+	} else if infoi.ModTime().Equal(infoj.ModTime()) {
 		// Use name when date is equal
 		return e.entries[i].Name() < e.entries[j].Name()
 	}
@@ -230,6 +257,7 @@ func (e sortByDate) Len() int {
 
 func (e sortByDate) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }
 
@@ -251,13 +279,20 @@ func (e sortByDateRev) Less(i, j int) bool {
 		return false
 	}
 	// Date next
-	infoi, _ := e.entries[i].Info()
-	infoj, _ := e.entries[j].Info()
+	infoi := e.infos[i]
+	infoj := e.infos[j]
+	if infoi == nil && infoj != nil {
+		return false
+	} else if infoi != nil && infoj == nil {
+		return true
+	} else if infoi == nil && infoj == nil {
+		return e.entries[i].Name() < e.entries[j].Name()
+	}
 	if infoj.ModTime().Before(infoi.ModTime()) {
 		return true
-	} else if infoi.ModTime() == infoj.ModTime() {
+	} else if infoi.ModTime().Equal(infoj.ModTime()) {
 		// Use name when date is equal
-		return e.entries[i].Name() < e.entries[j].Name()
+		return e.entries[j].Name() < e.entries[i].Name()
 	}
 	return false
 }
@@ -268,5 +303,6 @@ func (e sortByDateRev) Len() int {
 
 func (e sortByDateRev) Swap(i, j int) {
 	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
 	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }

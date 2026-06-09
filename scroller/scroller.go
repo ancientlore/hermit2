@@ -3,9 +3,9 @@ package scroller
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var (
@@ -17,13 +17,15 @@ var (
 
 // Model implements scrolling behavior over a Viewer.
 type Model[T Viewer] struct {
-	Header string    // Header text
-	Data   T         // The view we are using
-	Prev   tea.Model // The previous model (for going back)
-	cursor int       // Current position of cursor
-	offset int       // The offset of the view (enables scrolling)
-	width  int       // The width of the current view
-	height int       // The height of the current view
+	Header         string         // Header text
+	Data           T              // The view we are using
+	Prev           tea.Model      // The previous model (for going back)
+	cursor         int            // Current position of cursor
+	offset         int            // The offset of the view (enables scrolling)
+	width          int            // The width of the current view
+	height         int            // The height of the current view
+	normalStyle    lipgloss.Style // Cached style for normal lines
+	highlightStyle lipgloss.Style // Cached style for highlighted line
 }
 
 // Init initializes the model.
@@ -37,7 +39,7 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	// Is it a key press?
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 
 		// Cool, what was the actual key pressed?
 		switch {
@@ -82,6 +84,8 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height - 2 // account for header and footer
+		m.normalStyle = normal.Width(m.width).Height(1).MaxWidth(m.width)
+		m.highlightStyle = highlight.Width(m.width).Height(1).MaxWidth(m.width)
 		m.fixOffset()
 	}
 
@@ -92,7 +96,7 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the contents of the scroller. It is intended to be implemented
 // by the class embedding the scroller.
-func (m Model[T]) View() string {
+func (m Model[T]) View() tea.View {
 	// Header
 	s := header.Width(m.width).Height(1).Render(m.Header) + "\n"
 
@@ -101,9 +105,9 @@ func (m Model[T]) View() string {
 	cursorStart := 0
 	cursorEnd := 0
 	for i := m.offset; i < m.Data.Len(m.width) && i < m.height+m.offset; i++ {
-		style := normal.Width(m.width).Height(1).MaxWidth(m.width)
+		style := m.normalStyle
 		if m.cursor == i {
-			style = highlight.Width(m.width).Height(1).MaxWidth(m.width)
+			style = m.highlightStyle
 			cursorStart = lines
 		}
 		line := m.Data.Render(i, m.width, style)
@@ -141,7 +145,9 @@ func (m Model[T]) View() string {
 
 	// Footer
 	s += m.Data.Footer(m.cursor, m.width, footer.Width(m.width).Height(1))
-	return s
+	v := tea.NewView(s)
+	v.AltScreen = true
+	return v
 }
 
 // Cursor returns the position of the cursor.

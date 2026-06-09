@@ -12,8 +12,8 @@ import (
 	"github.com/ancientlore/hermit2/config"
 	"github.com/ancientlore/hermit2/scroller"
 	"github.com/ancientlore/hermit2/views"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 type refreshMsg struct{}
@@ -38,7 +38,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	// Is it a key press?
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 
 		sizeCmd := func() tea.Msg { return tea.WindowSizeMsg{Width: m.Width(), Height: m.Height()} }
 

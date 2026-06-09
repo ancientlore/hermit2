@@ -16,7 +16,7 @@ import (
 
 	"github.com/ancientlore/hermit2/scroller"
 	"github.com/ancientlore/hermit2/views"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func NewFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {

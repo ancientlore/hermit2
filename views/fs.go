@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 const (
@@ -29,6 +29,7 @@ type FS struct {
 	root     string        // The name for the root of the file system
 	folder   string        // The current folder in the file system
 	entries  []fs.DirEntry // The list of directory entries read
+	infos    []fs.FileInfo // Pre-cached file info for sorting and rendering
 	selected []bool        // Whether an entry is selected
 }
 
@@ -103,8 +104,8 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 	}
 
 	// Render the row
-	info, err := choice.Info()
-	if err == nil {
+	info := fsv.infos[i]
+	if info != nil {
 		n := time.Now().Local()
 		t := info.ModTime().Local()
 		format := timeFormatNew
@@ -159,6 +160,13 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 	}
 
 	fsv.entries = entries
+	fsv.infos = make([]fs.FileInfo, len(entries))
+	for i, entry := range entries {
+		info, err := entry.Info()
+		if err == nil {
+			fsv.infos[i] = info
+		}
+	}
 	fsv.selected = make([]bool, len(entries))
 	fsv.root = root
 	fsv.folder = folder

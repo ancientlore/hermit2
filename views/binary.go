@@ -1,41 +1,38 @@
 package views
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"unicode"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Binary manages the base logic of rendering binary data.
 type Binary struct {
-	io.ReadSeekCloser
-	size int64
-	b    []byte
+	rdr  io.Closer
+	data []byte
 }
 
 // Render formats the line at position i using the base style and view width.
 func (v Binary) Render(i, width int, baseStyle lipgloss.Style) string {
 	w := dataWidth(width)
-	_, err := v.Seek(int64(i*w), io.SeekStart)
-	if err != nil {
-		return baseStyle.Blink(true).Render(err.Error())
+	offset := i * w
+	if offset >= len(v.data) {
+		return ""
 	}
-	if len(v.b) != w {
-		v.b = make([]byte, w)
+	end := offset + w
+	if end > len(v.data) {
+		end = len(v.data)
 	}
-	n, err := v.Read(v.b)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return baseStyle.Blink(true).Render(err.Error())
-	}
-	s := fmt.Sprintf("% X%s  ", v.b[0:n], strings.Repeat("   ", w-n))
+	chunk := v.data[offset:end]
+
+	s := fmt.Sprintf("% X%s  ", chunk, strings.Repeat("   ", w-len(chunk)))
 	var x strings.Builder
-	for i := 0; i < n; i++ {
-		if unicode.IsPrint(rune(v.b[i])) {
-			x.WriteRune(rune(v.b[i]))
+	for i := 0; i < len(chunk); i++ {
+		if unicode.IsPrint(rune(chunk[i])) {
+			x.WriteRune(rune(chunk[i]))
 		} else {
 			x.WriteRune('.')
 		}
@@ -45,28 +42,40 @@ func (v Binary) Render(i, width int, baseStyle lipgloss.Style) string {
 
 // Footer formats the footer using the base style and view width.
 func (v Binary) Footer(cursor, width int, baseStyle lipgloss.Style) string {
-	return baseStyle.Render(fmt.Sprintf("%d / %d bytes (%d bytes per row)", cursor*dataWidth(width), v.size, dataWidth(width)))
+	return baseStyle.Render(fmt.Sprintf("%d / %d bytes (%d bytes per row)", cursor*dataWidth(width), len(v.data), dataWidth(width)))
 }
 
 // Len returns the number of lines of text.
 func (v Binary) Len(width int) int {
 	w := dataWidth(width)
-	l := v.size / int64(w)
-	if v.size%int64(w) > 0 {
+	l := len(v.data) / w
+	if len(v.data)%w > 0 {
 		l++
 	}
-	return int(l)
+	return l
 }
 
-// NewBinary prepares binary data for rendering.
+// Close closes the underlying reader.
+func (v Binary) Close() error {
+	if v.rdr != nil {
+		return v.rdr.Close()
+	}
+	return nil
+}
+
+// NewBinary prepares binary data for rendering by reading it all into memory.
 func NewBinary(rdr io.ReadSeekCloser) (*Binary, error) {
-	n, err := rdr.Seek(0, io.SeekEnd)
-	if err != nil && !errors.Is(err, io.EOF) {
+	_, err := rdr.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+	data, err := io.ReadAll(rdr)
+	if err != nil {
 		return nil, err
 	}
 	return &Binary{
-		ReadSeekCloser: rdr,
-		size:           n,
+		rdr:  rdr,
+		data: data,
 	}, nil
 }
 

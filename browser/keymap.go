@@ -1,6 +1,6 @@
 package browser
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 type KeyMap struct {
 	Left         key.Binding
@@ -28,7 +28,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("→", "view subfolder or file"),
 	),
 	ToggleSelect: key.NewBinding(
-		key.WithKeys("enter", " "),
+		key.WithKeys("enter", "space"),
 		key.WithHelp("space/↲", "toggle selection"),
 	),
 	Select: key.NewBinding(

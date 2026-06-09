@@ -3,7 +3,7 @@ package scroller
 import (
 	"io"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Viewer defines types that can view text data, including
