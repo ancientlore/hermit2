@@ -1,37 +1,63 @@
 package views
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/alecthomas/chroma/v2/styles"
-	"charm.land/lipgloss/v2"
 	"github.com/huandu/xstrings"
 )
 
 // Text manages the base logic of the cursor position and pagination of a string of text.
-type Text []string
+type Text struct {
+	lines [][]chroma.Token
+	style *chroma.Style
+}
 
 // Render formats the line at position i using the base style and view width.
 func (v Text) Render(i, width int, baseStyle lipgloss.Style) string {
-	if i >= 0 && i < len(v) {
-		return baseStyle.Render(v[i])
+	if i < 0 || i >= len(v.lines) {
+		return ""
 	}
-	return ""
+	bg := baseStyle.GetBackground()
+	var b strings.Builder
+	for _, tok := range v.lines[i] {
+		val := strings.TrimSuffix(tok.Value, "\n")
+		if val == "" {
+			continue
+		}
+		ts := lipgloss.NewStyle().Background(bg)
+		if v.style != nil {
+			entry := v.style.Get(tok.Type)
+			if entry.Colour.IsSet() {
+				ts = ts.Foreground(lipgloss.Color(entry.Colour.String()))
+			}
+			if entry.Bold == chroma.Yes {
+				ts = ts.Bold(true)
+			}
+			if entry.Italic == chroma.Yes {
+				ts = ts.Italic(true)
+			}
+			if entry.Underline == chroma.Yes {
+				ts = ts.Underline(true)
+			}
+		}
+		b.WriteString(ts.Render(val))
+	}
+	return baseStyle.Render(b.String())
 }
 
 // Footer formats the footer using the base style and view width.
 func (v Text) Footer(cursor, width int, baseStyle lipgloss.Style) string {
-	return baseStyle.Render(fmt.Sprintf("%d / %d", cursor+1, len(v)))
+	return baseStyle.Render(fmt.Sprintf("%d / %d", cursor+1, len(v.lines)))
 }
 
 // Len returns the number of lines of text.
 func (v Text) Len(width int) int {
-	return len(v)
+	return len(v.lines)
 }
 
 // Close closes the viewer, if necessary.
@@ -39,23 +65,38 @@ func (v Text) Close() error {
 	return nil
 }
 
-// NewText expands tabs and splits the string into a slice of lines.
+// NewText expands tabs and splits the string into tokenized lines for syntax-highlighted rendering.
 func NewText(t string, fpath string) Text {
-
-	var lexer string
-	if l := lexers.Match(fpath); l != nil {
-		lexer = l.Config().Name
-	}
-
 	s := xstrings.ExpandTabs(strings.ReplaceAll(t, "\r", ""), 8)
 
-	var buf bytes.Buffer
-	err := quick.Highlight(&buf, s, lexer, "terminal256", "hermit")
-	if err == nil {
-		s = buf.String()
+	l := lexers.Match(fpath)
+	if l == nil {
+		l = lexers.Analyse(s)
+	}
+	if l == nil {
+		l = lexers.Fallback
+	}
+	l = chroma.Coalesce(l)
+
+	style := styles.Get("hermit")
+	if style == nil {
+		style = styles.Fallback
 	}
 
-	return strings.Split(s, "\n")
+	var lines [][]chroma.Token
+	if it, err := l.Tokenise(nil, s); err == nil {
+		lines = chroma.SplitTokensIntoLines(it.Tokens())
+	} else {
+		lines = chroma.SplitTokensIntoLines([]chroma.Token{{Type: chroma.Text, Value: s}})
+	}
+	if len(lines) == 0 {
+		lines = [][]chroma.Token{{}}
+	}
+
+	return Text{
+		lines: lines,
+		style: style,
+	}
 }
 
 func init() {

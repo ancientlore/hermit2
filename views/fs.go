@@ -21,6 +21,7 @@ var (
 	bold        = lipgloss.NewStyle().Foreground(lipgloss.Color("#AA00AA"))
 	special     = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
 	specialbold = lipgloss.NewStyle().Foreground(lipgloss.Color("#770077"))
+	ellipsis    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
 )
 
 // FS is a viewer for a fs.FS.
@@ -95,7 +96,9 @@ func (fsv FS) Close() error {
 
 // Render formats the line at position i using the base style and view width.
 func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
-	var s string
+	if i < 0 || i >= len(fsv.entries) {
+		return ""
+	}
 	choice := fsv.entries[i]
 	// Is this choice selected?
 	checked := " " // not selected
@@ -103,7 +106,19 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 		checked = "*" // selected!
 	}
 
+	ns := normal
+	if choice.IsDir() {
+		ns = bold
+		if strings.HasPrefix(choice.Name(), ".") {
+			ns = specialbold
+		}
+	} else if strings.HasPrefix(choice.Name(), ".") {
+		ns = special
+	}
+	ns = ns.Background(baseStyle.GetBackground())
+
 	// Render the row
+	var prefix string
 	info := fsv.infos[i]
 	if info != nil {
 		n := time.Now().Local()
@@ -112,29 +127,46 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 		if t.Year() < n.Year() {
 			format = timeFormatOld
 		}
-		ns := normal
-		if choice.IsDir() {
-			ns = bold
-			if strings.HasPrefix(choice.Name(), ".") {
-				ns = specialbold
-			}
-		} else if strings.HasPrefix(choice.Name(), ".") {
-			ns = special
-		}
-		s = baseStyle.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, info.Mode(), info.Size(), info.ModTime().Format(format), ns.Render(choice.Name())))
+		prefix = fmt.Sprintf("%s %11s %10d %s ", checked, info.Mode(), info.Size(), info.ModTime().Format(format))
 	} else {
-		ns := normal
-		if choice.IsDir() {
-			ns = bold
-			if strings.HasPrefix(choice.Name(), ".") {
-				ns = specialbold
-			}
-		} else if strings.HasPrefix(choice.Name(), ".") {
-			ns = special
-		}
-		s = baseStyle.Render(fmt.Sprintf("%s %11s %10d %s %s", checked, "?", 0, "", ns.Render(choice.Name())))
+		prefix = fmt.Sprintf("%s %11s %10d %s ", checked, "?", 0, "")
 	}
-	return s
+
+	es := ellipsis.Background(baseStyle.GetBackground())
+	name := renderName(choice.Name(), width-lipgloss.Width(prefix), ns, es)
+	return baseStyle.Render(prefix + name)
+}
+
+func renderName(s string, maxWidth int, nameStyle, ellipsisStyle lipgloss.Style) string {
+	if maxWidth <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= maxWidth {
+		return nameStyle.Render(s)
+	}
+	if maxWidth <= 3 {
+		return ellipsisStyle.Render("..."[:maxWidth])
+	}
+	r := []rune(s)
+	avail := maxWidth - 3
+	frontRunes := (avail + 1) / 2
+	backRunes := avail - frontRunes
+	if frontRunes > len(r) {
+		frontRunes = len(r)
+	}
+	if backRunes > len(r)-frontRunes {
+		backRunes = len(r) - frontRunes
+	}
+	front := r[:frontRunes]
+	back := r[len(r)-backRunes:]
+	for (len(front) > 0 || len(back) > 0) && lipgloss.Width(string(front))+3+lipgloss.Width(string(back)) > maxWidth {
+		if len(front) >= len(back) && len(front) > 0 {
+			front = front[:len(front)-1]
+		} else if len(back) > 0 {
+			back = back[1:]
+		}
+	}
+	return nameStyle.Render(string(front)) + ellipsisStyle.Render("...") + nameStyle.Render(string(back))
 }
 
 // Footer formats the footer using the base style and view width.

@@ -13,6 +13,7 @@ var (
 	footer    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
 	normal    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
 	highlight = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
+	ellipsis  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#888B7E"))
 )
 
 // Model implements scrolling behavior over a Viewer.
@@ -69,12 +70,10 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fixOffset()
 
 		case key.Matches(msg, DefaultKeyMap.PageUp):
-			m.cursor -= m.height - 1
-			m.fixOffset()
+			m.pageUp()
 
 		case key.Matches(msg, DefaultKeyMap.PageDown):
-			m.cursor += m.height - 1
-			m.fixOffset()
+			m.pageDown()
 
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			m.Data.Close()
@@ -98,17 +97,26 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // by the class embedding the scroller.
 func (m Model[T]) View() tea.View {
 	// Header
-	s := header.Width(m.width).Height(1).Render(m.Header) + "\n"
+	hdr := m.Header
+	if m.width > 3 && lipgloss.Width(hdr) > m.width {
+		r := []rune(hdr)
+		if len(r) > m.width-3 {
+			r = r[len(r)-(m.width-3):]
+		}
+		for len(r) > 0 && lipgloss.Width(string(r))+3 > m.width {
+			r = r[1:]
+		}
+		hdr = ellipsis.Render("...") + header.Render(string(r))
+	}
+	s := header.Width(m.width).Height(1).MaxWidth(m.width).Render(hdr) + "\n"
 
 	// Viewport
 	lines := 0
-	cursorStart := 0
 	cursorEnd := 0
-	for i := m.offset; i < m.Data.Len(m.width) && i < m.height+m.offset; i++ {
+	for i := m.offset; i < m.Data.Len(m.width) && lines < m.height; i++ {
 		style := m.normalStyle
 		if m.cursor == i {
 			style = m.highlightStyle
-			cursorStart = lines
 		}
 		line := m.Data.Render(i, m.width, style)
 		_, h := lipgloss.Size(line)
@@ -131,15 +139,11 @@ func (m Model[T]) View() tea.View {
 
 		if cursorEnd > m.height {
 			// take off from the front
-			s = strings.Join(append(a[0:1], a[1-repeat:]...), "\n")
-		} else if cursorStart < -repeat {
-			// take from back
-			s = strings.Join(a[0:len(a)-1+repeat], "\n") + "\n"
+			dropTop := cursorEnd - m.height
+			s = strings.Join(append(a[0:1], a[1+dropTop:1+dropTop+m.height]...), "\n") + "\n"
 		} else {
-			// take equally from both
-			r1 := -repeat / 2
-			r2 := r1 - repeat%2
-			s = strings.Join(append(a[0:1], a[r1:len(a)-1-r2]...), "\n") + "\n"
+			// take from back
+			s = strings.Join(a[0:1+m.height], "\n") + "\n"
 		}
 	}
 
@@ -171,13 +175,66 @@ func (m Model[T]) Height() int {
 	return m.height + 2
 }
 
+// lineHeight returns the rendered visual height of line i.
+func (m Model[T]) lineHeight(i int) int {
+	if m.width <= 0 || i < 0 || i >= m.Data.Len(m.width) {
+		return 1
+	}
+	line := m.Data.Render(i, m.width, m.normalStyle)
+	_, h := lipgloss.Size(line)
+	if h < 1 {
+		return 1
+	}
+	return h
+}
+
+// pageUp moves the cursor up by one visual page.
+func (m *Model[T]) pageUp() {
+	lines := 0
+	moved := 0
+	for i := m.cursor - 1; i >= 0; i-- {
+		h := m.lineHeight(i)
+		if moved > 0 && lines+h > m.height-1 {
+			break
+		}
+		lines += h
+		moved++
+	}
+	if moved == 0 && m.cursor > 0 {
+		moved = 1
+	}
+	m.cursor -= moved
+	m.fixOffset()
+}
+
+// pageDown moves the cursor down by one visual page.
+func (m *Model[T]) pageDown() {
+	n := m.Data.Len(m.width)
+	lines := 0
+	moved := 0
+	for i := m.cursor + 1; i < n; i++ {
+		h := m.lineHeight(i)
+		if moved > 0 && lines+h > m.height-1 {
+			break
+		}
+		lines += h
+		moved++
+	}
+	if moved == 0 && m.cursor < n-1 {
+		moved = 1
+	}
+	m.cursor += moved
+	m.fixOffset()
+}
+
 // fixOffset fixes the cursor and offset locations to be consistent
 // with the requested changes. Changes could be the height, width,
 // or cursor position.
 func (m *Model[T]) fixOffset() {
+	n := m.Data.Len(m.width)
 	// Fix cursor location
-	if m.cursor > m.Data.Len(m.width)-1 {
-		m.cursor = m.Data.Len(m.width) - 1
+	if m.cursor > n-1 {
+		m.cursor = n - 1
 	}
 	if m.cursor < 0 {
 		m.cursor = 0
@@ -188,10 +245,19 @@ func (m *Model[T]) fixOffset() {
 		m.offset = m.cursor
 	}
 
-	// cursor greater than offset + window size - offset needs to be increased
-	if m.cursor >= m.offset+m.height {
-		m.offset = m.cursor - m.height + 1
+	// Ensure visual lines from m.offset through m.cursor fit within m.height
+	if n > 0 && m.height > 0 && m.width > 0 {
+		lines := 0
+		for i := m.cursor; i >= m.offset; i-- {
+			h := m.lineHeight(i)
+			if i < m.cursor && lines+h > m.height {
+				m.offset = i + 1
+				break
+			}
+			lines += h
+		}
 	}
+
 	if m.offset < 0 {
 		m.offset = 0
 	}
