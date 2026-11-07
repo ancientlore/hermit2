@@ -1,308 +1,179 @@
 package views
 
 import (
+	"cmp"
 	"path"
+	"slices"
 	"strings"
 )
 
-type sortByName FS
+// SortType specifies the field used to sort directory entries.
+type SortType int
 
-func (e sortByName) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
+const (
+	SortByName SortType = iota
+	SortByExt
+	SortBySize
+	SortByDate
+)
+
+// SortDirection specifies whether entries are sorted in forward or reverse order.
+type SortDirection int
+
+const (
+	SortForward SortDirection = iota
+	SortReverse
+)
+
+var (
+	defaultSortType = SortByName
+	defaultSortDir  = SortForward
+)
+
+// compareFunc is a generic comparison function following the slices.SortFunc signature.
+type compareFunc[T any] func(a, b T) int
+
+// reverseCompare inverts the ordering of a comparison function.
+func reverseCompare[T any](fn compareFunc[T]) compareFunc[T] {
+	return func(a, b T) int {
+		return -fn(a, b)
 	}
-	// File/dir sort next
-	return e.entries[i].Name() < e.entries[j].Name()
 }
 
-func (e sortByName) Len() int {
-	return len(e.entries)
+// chainCompare combines multiple comparison functions in priority order,
+// returning the first non-zero result.
+func chainCompare[T any](fns ...compareFunc[T]) compareFunc[T] {
+	return func(a, b T) int {
+		for _, fn := range fns {
+			if v := fn(a, b); v != 0 {
+				return v
+			}
+		}
+		return 0
+	}
 }
 
-func (e sortByName) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
+// compareDir sorts directories before non-directories.
+func compareDir(a, b fsEntry) int {
+	switch {
+	case a.entry.IsDir() && !b.entry.IsDir():
+		return -1
+	case !a.entry.IsDir() && b.entry.IsDir():
+		return 1
+	default:
+		return 0
+	}
 }
 
-type sortByNameRev FS
-
-func (e sortByNameRev) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
+// compareSpecial sorts dot-prefixed entries before regular entries.
+func compareSpecial(a, b fsEntry) int {
+	pa := strings.HasPrefix(a.entry.Name(), ".")
+	pb := strings.HasPrefix(b.entry.Name(), ".")
+	switch {
+	case pa && !pb:
+		return -1
+	case !pa && pb:
+		return 1
+	default:
+		return 0
 	}
-	// File/dir sort next
-	return e.entries[j].Name() < e.entries[i].Name()
 }
 
-func (e sortByNameRev) Len() int {
-	return len(e.entries)
+// compareName compares entries by name.
+func compareName(a, b fsEntry) int {
+	return cmp.Compare(a.entry.Name(), b.entry.Name())
 }
 
-func (e sortByNameRev) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
+// compareExt compares entries by file extension (directories fall back to name).
+func compareExt(a, b fsEntry) int {
+	if a.entry.IsDir() && b.entry.IsDir() {
+		return cmp.Compare(a.entry.Name(), b.entry.Name())
+	}
+	return cmp.Compare(path.Ext(a.entry.Name()), path.Ext(b.entry.Name()))
 }
 
-type sortByExt FS
-
-func (e sortByExt) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
-	} else if e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return e.entries[i].Name() < e.entries[j].Name()
+// compareSize compares entries by file size (directories sort equal by size).
+func compareSize(a, b fsEntry) int {
+	if a.entry.IsDir() && b.entry.IsDir() {
+		return 0
 	}
-	// Special files next
-	pi := strings.HasPrefix(e.entries[i].Name(), ".")
-	pj := strings.HasPrefix(e.entries[j].Name(), ".")
-	if pi && !pj {
-		return true
-	} else if !pi && pj {
-		return false
+	switch {
+	case a.info == nil && b.info != nil:
+		return -1
+	case a.info != nil && b.info == nil:
+		return 1
+	case a.info == nil && b.info == nil:
+		return 0
+	default:
+		return cmp.Compare(a.info.Size(), b.info.Size())
 	}
-	// Extensions next
-	ei := path.Ext(e.entries[i].Name())
-	ej := path.Ext(e.entries[j].Name())
-	if ei < ej {
-		return true
-	} else if ei == ej {
-		// Use name when both extensions match
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	return false
 }
 
-func (e sortByExt) Len() int {
-	return len(e.entries)
+// compareDate compares entries by modification time.
+func compareDate(a, b fsEntry) int {
+	switch {
+	case a.info == nil && b.info != nil:
+		return -1
+	case a.info != nil && b.info == nil:
+		return 1
+	case a.info == nil && b.info == nil:
+		return 0
+	default:
+		return a.info.ModTime().Compare(b.info.ModTime())
+	}
 }
 
-func (e sortByExt) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
+func entryComparator(sortType SortType, sortDir SortDirection) compareFunc[fsEntry] {
+	withDir := func(fn compareFunc[fsEntry]) compareFunc[fsEntry] {
+		if sortDir == SortReverse {
+			return reverseCompare(fn)
+		}
+		return fn
+	}
+
+	switch sortType {
+	case SortByName:
+		return chainCompare(compareDir, compareSpecial, withDir(compareName), compareDate, compareSize, compareExt)
+	case SortByExt:
+		return chainCompare(compareDir, compareSpecial, withDir(compareExt), withDir(compareName), compareDate, compareSize)
+	case SortBySize:
+		return chainCompare(compareDir, compareSpecial, withDir(compareSize), compareName, compareDate, compareExt)
+	case SortByDate:
+		return chainCompare(compareDir, compareSpecial, withDir(compareDate), withDir(compareName), compareSize, compareExt)
+	default:
+		return chainCompare(compareDir, compareSpecial, withDir(compareName), compareDate, compareSize, compareExt)
+	}
 }
 
-type sortByExtRev FS
-
-func (e sortByExtRev) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
-	}
-	// Special files next
-	pi := strings.HasPrefix(e.entries[i].Name(), ".")
-	pj := strings.HasPrefix(e.entries[j].Name(), ".")
-	if pi && !pj {
-		return true
-	} else if !pi && pj {
-		return false
-	}
-	// Directory name next
-	if e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return e.entries[j].Name() < e.entries[i].Name()
-	}
-	// Extensions next
-	ei := path.Ext(e.entries[i].Name())
-	ej := path.Ext(e.entries[j].Name())
-	if ej < ei {
-		return true
-	} else if ei == ej {
-		// Use name when both extensions match
-		return e.entries[j].Name() < e.entries[i].Name()
-	}
-	return false
+// SortType returns the current sort type of the view.
+func (fsv FS) SortType() SortType {
+	return fsv.sortType
 }
 
-func (e sortByExtRev) Len() int {
-	return len(e.entries)
+// SortDirection returns the current sort direction of the view.
+func (fsv FS) SortDirection() SortDirection {
+	return fsv.sortDir
 }
 
-func (e sortByExtRev) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
+// Sort sorts the directory entries using the current sort type and direction.
+func (fsv *FS) Sort() {
+	slices.SortFunc(fsv.entries, entryComparator(fsv.sortType, fsv.sortDir))
 }
 
-type sortBySize FS
-
-func (e sortBySize) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
-	} else if e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	// Size next
-	infoi := e.infos[i]
-	infoj := e.infos[j]
-	if infoi == nil && infoj != nil {
-		return true
-	} else if infoi != nil && infoj == nil {
-		return false
-	} else if infoi == nil && infoj == nil {
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	if infoi.Size() < infoj.Size() {
-		return true
-	} else if infoi.Size() == infoj.Size() {
-		// Use name when size is equal
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	return false
+// SetSort updates the active and default sort options and re-sorts the entries.
+func (fsv *FS) SetSort(sortType SortType, sortDir SortDirection) {
+	defaultSortType = sortType
+	defaultSortDir = sortDir
+	fsv.sortType = sortType
+	fsv.sortDir = sortDir
+	fsv.Sort()
 }
 
-func (e sortBySize) Len() int {
-	return len(e.entries)
-}
-
-func (e sortBySize) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
-}
-
-type sortBySizeRev FS
-
-func (e sortBySizeRev) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
-	} else if e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return e.entries[i].Name() < e.entries[j].Name()
+// SyncSort ensures the view is sorted with the current default sort options.
+func (fsv *FS) SyncSort() {
+	if fsv.sortType != defaultSortType || fsv.sortDir != defaultSortDir {
+		fsv.sortType = defaultSortType
+		fsv.sortDir = defaultSortDir
+		fsv.Sort()
 	}
-	// Size next
-	infoi := e.infos[i]
-	infoj := e.infos[j]
-	if infoi == nil && infoj != nil {
-		return false
-	} else if infoi != nil && infoj == nil {
-		return true
-	} else if infoi == nil && infoj == nil {
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	if infoj.Size() < infoi.Size() {
-		return true
-	} else if infoi.Size() == infoj.Size() {
-		// Use name when size is equal
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	return false
-}
-
-func (e sortBySizeRev) Len() int {
-	return len(e.entries)
-}
-
-func (e sortBySizeRev) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
-}
-
-type sortByDate FS
-
-func (e sortByDate) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
-	}
-	// Special files next
-	pi := strings.HasPrefix(e.entries[i].Name(), ".")
-	pj := strings.HasPrefix(e.entries[j].Name(), ".")
-	if pi && !pj {
-		return true
-	} else if !pi && pj {
-		return false
-	}
-	// Date next
-	infoi := e.infos[i]
-	infoj := e.infos[j]
-	if infoi == nil && infoj != nil {
-		return true
-	} else if infoi != nil && infoj == nil {
-		return false
-	} else if infoi == nil && infoj == nil {
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	if infoi.ModTime().Before(infoj.ModTime()) {
-		return true
-	} else if infoi.ModTime().Equal(infoj.ModTime()) {
-		// Use name when date is equal
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	return false
-}
-
-func (e sortByDate) Len() int {
-	return len(e.entries)
-}
-
-func (e sortByDate) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
-}
-
-type sortByDateRev FS
-
-func (e sortByDateRev) Less(i, j int) bool {
-	// Directories first
-	if e.entries[i].IsDir() && !e.entries[j].IsDir() {
-		return true
-	} else if !e.entries[i].IsDir() && e.entries[j].IsDir() {
-		return false
-	}
-	// Special files next
-	pi := strings.HasPrefix(e.entries[i].Name(), ".")
-	pj := strings.HasPrefix(e.entries[j].Name(), ".")
-	if pi && !pj {
-		return true
-	} else if !pi && pj {
-		return false
-	}
-	// Date next
-	infoi := e.infos[i]
-	infoj := e.infos[j]
-	if infoi == nil && infoj != nil {
-		return false
-	} else if infoi != nil && infoj == nil {
-		return true
-	} else if infoi == nil && infoj == nil {
-		return e.entries[i].Name() < e.entries[j].Name()
-	}
-	if infoj.ModTime().Before(infoi.ModTime()) {
-		return true
-	} else if infoi.ModTime().Equal(infoj.ModTime()) {
-		// Use name when date is equal
-		return e.entries[j].Name() < e.entries[i].Name()
-	}
-	return false
-}
-
-func (e sortByDateRev) Len() int {
-	return len(e.entries)
-}
-
-func (e sortByDateRev) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
-	e.infos[i], e.infos[j] = e.infos[j], e.infos[i]
-	e.selected[i], e.selected[j] = e.selected[j], e.selected[i]
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -24,14 +23,20 @@ var (
 	ellipsis    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
 )
 
+type fsEntry struct {
+	entry    fs.DirEntry
+	info     fs.FileInfo
+	selected bool
+}
+
 // FS is a viewer for a fs.FS.
 type FS struct {
 	fsys     fs.FS         // The filesystem being browsed
 	root     string        // The name for the root of the file system
 	folder   string        // The current folder in the file system
-	entries  []fs.DirEntry // The list of directory entries read
-	infos    []fs.FileInfo // Pre-cached file info for sorting and rendering
-	selected []bool        // Whether an entry is selected
+	entries  []fsEntry     // The list of directory entries read
+	sortType SortType      // Current sort type
+	sortDir  SortDirection // Current sort direction
 }
 
 // Title returns the full name of the current folder.
@@ -57,30 +62,30 @@ func (fsv FS) FS() fs.FS {
 // At returns the directory entry at position i.
 func (fsv FS) At(i int) fs.DirEntry {
 	if i >= 0 && i < len(fsv.entries) {
-		return fsv.entries[i]
+		return fsv.entries[i].entry
 	}
 	return nil
 }
 
 // Selected returns whether the entry at position i is selected.
 func (fsv FS) Selected(i int) bool {
-	if i >= 0 && i < len(fsv.selected) {
-		return fsv.selected[i]
+	if i >= 0 && i < len(fsv.entries) {
+		return fsv.entries[i].selected
 	}
 	return false
 }
 
 // Select sets the selected flag at position i to b.
 func (fsv *FS) Select(i int, b bool) {
-	if i >= 0 && i < len(fsv.selected) {
-		fsv.selected[i] = b
+	if i >= 0 && i < len(fsv.entries) {
+		fsv.entries[i].selected = b
 	}
 }
 
 // ToggleSelect toggles the selected flag at position i.
 func (fsv *FS) ToggleSelect(i int) {
-	if i >= 0 && i < len(fsv.selected) {
-		fsv.selected[i] = !fsv.selected[i]
+	if i >= 0 && i < len(fsv.entries) {
+		fsv.entries[i].selected = !fsv.entries[i].selected
 	}
 }
 
@@ -99,10 +104,11 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 	if i < 0 || i >= len(fsv.entries) {
 		return ""
 	}
-	choice := fsv.entries[i]
+	item := fsv.entries[i]
+	choice := item.entry
 	// Is this choice selected?
 	checked := " " // not selected
-	if fsv.selected[i] {
+	if item.selected {
 		checked = "*" // selected!
 	}
 
@@ -119,7 +125,7 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 
 	// Render the row
 	var prefix string
-	info := fsv.infos[i]
+	info := item.info
 	if info != nil {
 		n := time.Now().Local()
 		t := info.ModTime().Local()
@@ -172,8 +178,8 @@ func renderName(s string, maxWidth int, nameStyle, ellipsisStyle lipgloss.Style)
 // Footer formats the footer using the base style and view width.
 func (fsv FS) Footer(i, width int, baseStyle lipgloss.Style) string {
 	sel := 0
-	for i := range fsv.selected {
-		if fsv.selected[i] {
+	for _, item := range fsv.entries {
+		if item.selected {
 			sel++
 		}
 	}
@@ -186,25 +192,26 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 	if len(rf) == 0 {
 		rf = "."
 	}
-	entries, err := fs.ReadDir(fsys, rf)
+	dirEntries, err := fs.ReadDir(fsys, rf)
 	if err != nil {
 		return err
 	}
 
-	fsv.entries = entries
-	fsv.infos = make([]fs.FileInfo, len(entries))
-	for i, entry := range entries {
-		info, err := entry.Info()
-		if err == nil {
-			fsv.infos[i] = info
+	fsv.entries = make([]fsEntry, len(dirEntries))
+	for i, entry := range dirEntries {
+		info, _ := entry.Info()
+		fsv.entries[i] = fsEntry{
+			entry: entry,
+			info:  info,
 		}
 	}
-	fsv.selected = make([]bool, len(entries))
 	fsv.root = root
 	fsv.folder = folder
 	fsv.fsys = fsys
+	fsv.sortType = defaultSortType
+	fsv.sortDir = defaultSortDir
 
-	sort.Sort(sortByExt(*fsv))
+	fsv.Sort()
 
 	return nil
 }

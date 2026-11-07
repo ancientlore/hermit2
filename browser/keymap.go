@@ -13,6 +13,7 @@ type KeyMap struct {
 	RunShell     key.Binding
 	GoHome       key.Binding
 	Refresh      key.Binding
+	Sort         key.Binding
 	Help         key.Binding
 	ViewBinary   key.Binding
 	FileInfo     key.Binding
@@ -58,6 +59,10 @@ var DefaultKeyMap = KeyMap{
 	Refresh: key.NewBinding(
 		key.WithKeys("alt+r", "ctrl+r", "f5"),
 		key.WithHelp("alt+r/ctrl+r/f5", "refresh directory listing"),
+	),
+	Sort: key.NewBinding(
+		key.WithKeys("alt+s", "ctrl+s"),
+		key.WithHelp("alt+s/ctrl+s", "sort directory listing"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("alt+h", "ctrl+h", "?"),
