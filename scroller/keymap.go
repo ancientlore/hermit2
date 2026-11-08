@@ -47,3 +47,59 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("ctrl+c", "exit Hermit"),
 	),
 }
+
+type ImageKeyMap struct {
+	Up        key.Binding
+	Down      key.Binding
+	Left      key.Binding
+	Right     key.Binding
+	ZoomIn    key.Binding
+	ZoomOut   key.Binding
+	ResetZoom key.Binding
+	Grayscale key.Binding
+	Back      key.Binding
+	Quit      key.Binding
+}
+
+var DefaultImageKeyMap = ImageKeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("up"),
+		key.WithHelp("↑", "pan image up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down"),
+		key.WithHelp("↓", "pan image down"),
+	),
+	Left: key.NewBinding(
+		key.WithKeys("left"),
+		key.WithHelp("←", "pan image left"),
+	),
+	Right: key.NewBinding(
+		key.WithKeys("right"),
+		key.WithHelp("→", "pan image right"),
+	),
+	ZoomIn: key.NewBinding(
+		key.WithKeys("+", "=", "z"),
+		key.WithHelp("+/=/z", "zoom in"),
+	),
+	ZoomOut: key.NewBinding(
+		key.WithKeys("-", "_"),
+		key.WithHelp("-", "zoom out"),
+	),
+	ResetZoom: key.NewBinding(
+		key.WithKeys("0"),
+		key.WithHelp("0", "reset zoom"),
+	),
+	Grayscale: key.NewBinding(
+		key.WithKeys("g"),
+		key.WithHelp("g", "toggle grayscale"),
+	),
+	Back: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "exit image view"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "exit Hermit"),
+	),
+}

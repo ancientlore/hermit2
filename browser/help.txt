@@ -37,3 +37,17 @@ Commands in the main browser:
     {{with .BrowserKeys.ViewBinary.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
 
     {{with .BrowserKeys.Help.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+Commands in the image viewer:
+
+    {{with .ImageKeys.ZoomIn.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ImageKeys.ZoomOut.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ImageKeys.ResetZoom.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ImageKeys.Grayscale.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .ImageKeys.Up.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ImageKeys.Down.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ImageKeys.Left.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .ImageKeys.Right.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+
+    {{with .ImageKeys.Back.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}

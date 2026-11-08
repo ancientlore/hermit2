@@ -39,9 +39,25 @@ func NewFileModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) 
 			return nil, err
 		}
 
-		var rdr io.Reader
-		rdr = f
+		filePath := path.Join(folder, entry.Name())
+
+		if views.IsImageExt(entry.Name()) {
+			m, err := NewImageModel(f, filePath, prev)
+			if err == nil {
+				f.Close()
+				return m, nil
+			}
+			if rs, ok := f.(io.Seeker); ok {
+				_, _ = rs.Seek(0, io.SeekStart)
+			} else {
+				f.Close()
+				return nil, err
+			}
+		}
+
+		var rdr io.Reader = f
 		isText := false
+		isImage := false
 
 		// Check mime type
 		if strings.HasPrefix(mime.TypeByExtension(path.Ext(entry.Name())), "text") {
@@ -54,18 +70,30 @@ func NewFileModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) 
 				f.Close()
 				return nil, err
 			}
-			if strings.HasPrefix(http.DetectContentType(b[0:n]), "text") {
+			contentType := http.DetectContentType(b[0:n])
+			if strings.HasPrefix(contentType, "image/") {
+				rdr = io.MultiReader(bytes.NewReader(b[0:n]), f)
+				isImage = true
+			} else if strings.HasPrefix(contentType, "text") {
 				rdr = io.MultiReader(bytes.NewReader(b[0:n]), f)
 				isText = true
 			}
 		}
 
+		if isImage {
+			m, err := NewImageModel(rdr, filePath, prev)
+			if err == nil {
+				f.Close()
+				return m, nil
+			}
+		}
+
 		if isText {
-			m, err := NewTextModel(rdr, path.Join(folder, entry.Name()), prev)
+			m, err := NewTextModel(rdr, filePath, prev)
 			f.Close()
 			return m, err
-		} else if rs, ok := rdr.(io.ReadSeekCloser); ok {
-			m, err := NewBinaryModel(rs, path.Join(folder, entry.Name()), prev)
+		} else if rs, ok := f.(io.ReadSeekCloser); ok {
+			m, err := NewBinaryModel(rs, filePath, prev)
 			if err != nil {
 				f.Close()
 				// otherwise Viewer owns the file
@@ -76,6 +104,19 @@ func NewFileModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) 
 		}
 	}
 	return nil, fmt.Errorf("not a viewable file")
+}
+
+// NewImageModel creates a new model to view an image file.
+func NewImageModel(rdr io.Reader, path string, prev tea.Model) (tea.Model, error) {
+	img, err := views.NewImage(rdr)
+	if err != nil {
+		return nil, err
+	}
+	return scroller.ImageModel[*views.Image]{
+		Header: path,
+		Data:   img,
+		Prev:   prev,
+	}, nil
 }
 
 // NewBinaryFileModel creates a new model to view a file as bytes.
@@ -225,6 +266,7 @@ func NewFileInfoModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Mod
 
 type helpInfo struct {
 	ScrollKeys  *scroller.KeyMap
+	ImageKeys   *scroller.ImageKeyMap
 	BrowserKeys *KeyMap
 }
 
@@ -233,6 +275,7 @@ func NewHelpModel(prev tea.Model) (tea.Model, error) {
 	var wtr bytes.Buffer
 	h := &helpInfo{
 		ScrollKeys:  &scroller.DefaultKeyMap,
+		ImageKeys:   &scroller.DefaultImageKeyMap,
 		BrowserKeys: &DefaultKeyMap,
 	}
 
