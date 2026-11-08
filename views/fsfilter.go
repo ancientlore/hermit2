@@ -4,6 +4,16 @@ import "strings"
 
 var defaultFilter = ""
 
+// DefaultFilter returns the package-level default wildcard filter string.
+func DefaultFilter() string {
+	return defaultFilter
+}
+
+// SetDefaultFilter sets the package-level default wildcard filter string.
+func SetDefaultFilter(filter string) {
+	defaultFilter = filter
+}
+
 // Filter returns the active wildcard filter string for this view.
 func (fsv FS) Filter() string {
 	return fsv.filter

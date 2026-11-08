@@ -72,6 +72,43 @@ func (h *History) At(i int) string {
 	return h.items[i]
 }
 
+// Items returns a copy of the history items ordered from most recent to oldest.
+func (h *History) Items() []string {
+	if h == nil || len(h.items) == 0 {
+		return nil
+	}
+	out := make([]string, len(h.items))
+	copy(out, h.items)
+	return out
+}
+
+// SetItems replaces the history buffer with the given items (ordered most recent first),
+// omitting empty or duplicate entries and capping at HistSize.
+func (h *History) SetItems(items []string) {
+	if h == nil {
+		return
+	}
+	h.items = nil
+	for _, item := range items {
+		if item == "" {
+			continue
+		}
+		dup := false
+		for _, existing := range h.items {
+			if existing == item {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			h.items = append(h.items, item)
+			if len(h.items) >= HistSize {
+				break
+			}
+		}
+	}
+}
+
 // Edit is a single-line text editor widget for popups with history support,
 // modeled after the original C++ Edit class.
 type Edit struct {

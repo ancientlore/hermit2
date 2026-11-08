@@ -48,6 +48,9 @@ func (m FilterDialogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.parent.Data.SetFilter(newFilter)
 			m.parent.HeaderTail = newFilter
 			m.parent.MoveCursor(0)
+			if err := saveOptions(); err != nil {
+				m.parent.footer = err.Error()
+			}
 			return m.parent, nil
 		case "esc":
 			return m.parent, nil

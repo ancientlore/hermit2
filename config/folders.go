@@ -12,6 +12,7 @@ import (
 const (
 	configFolderName = ".hermit"
 	ConfigFileName   = "hermit.toml"
+	OptionsFileName  = "options.toml"
 )
 
 // HomeFolder returns the location of the user's home folder
@@ -34,7 +35,7 @@ func ConfigFolder() (string, error) {
 	}
 	// Doesn't exist; let's try to create it
 	if errors.Is(err, os.ErrNotExist) {
-		err = os.Mkdir(f, 0655)
+		err = os.Mkdir(f, 0755)
 		if err != nil {
 			return "", fmt.Errorf("cannot create config folder %q: %w", f, err)
 		}

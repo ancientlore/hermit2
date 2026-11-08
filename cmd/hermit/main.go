@@ -33,6 +33,12 @@ func main() {
 	}
 	fmt.Printf("Config folder: %s\n", cfgFolder)
 
+	opts, err := config.InitOptions()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: unable to load options: %v\n", err)
+	}
+	browser.ApplyOptions(opts)
+
 	absFolder, err := filepath.Abs(*folder)
 	if err != nil {
 		fmt.Printf("Unable to get absolute path: %s\n", err)

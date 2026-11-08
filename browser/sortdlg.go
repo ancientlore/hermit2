@@ -55,6 +55,9 @@ func (m SortDialogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sortDir = views.SortReverse
 		case "enter":
 			m.parent.Data.SetSort(m.sortType, m.sortDir)
+			if err := saveOptions(); err != nil {
+				m.parent.footer = err.Error()
+			}
 			return m.parent, nil
 		case "esc":
 			return m.parent, nil

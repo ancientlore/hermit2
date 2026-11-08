@@ -2,6 +2,7 @@ package views
 
 import (
 	"cmp"
+	"fmt"
 	"path"
 	"slices"
 	"strings"
@@ -17,6 +18,44 @@ const (
 	SortByDate
 )
 
+// String returns the canonical string name of the sort type.
+func (s SortType) String() string {
+	switch s {
+	case SortByName:
+		return "name"
+	case SortByExt:
+		return "extension"
+	case SortBySize:
+		return "size"
+	case SortByDate:
+		return "date"
+	default:
+		return "name"
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SortType) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SortType) UnmarshalText(text []byte) error {
+	switch strings.ToLower(strings.TrimSpace(string(text))) {
+	case "", "name":
+		*s = SortByName
+	case "ext", "extension":
+		*s = SortByExt
+	case "size":
+		*s = SortBySize
+	case "date":
+		*s = SortByDate
+	default:
+		return fmt.Errorf("unknown sort type: %q", string(text))
+	}
+	return nil
+}
+
 // SortDirection specifies whether entries are sorted in forward or reverse order.
 type SortDirection int
 
@@ -25,10 +64,51 @@ const (
 	SortReverse
 )
 
+// String returns the canonical string name of the sort direction.
+func (d SortDirection) String() string {
+	switch d {
+	case SortForward:
+		return "forward"
+	case SortReverse:
+		return "reverse"
+	default:
+		return "forward"
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (d SortDirection) MarshalText() ([]byte, error) {
+	return []byte(d.String()), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (d *SortDirection) UnmarshalText(text []byte) error {
+	switch strings.ToLower(strings.TrimSpace(string(text))) {
+	case "", "forward":
+		*d = SortForward
+	case "reverse":
+		*d = SortReverse
+	default:
+		return fmt.Errorf("unknown sort direction: %q", string(text))
+	}
+	return nil
+}
+
 var (
 	defaultSortType = SortByName
 	defaultSortDir  = SortForward
 )
+
+// DefaultSort returns the package-level default sort type and direction.
+func DefaultSort() (SortType, SortDirection) {
+	return defaultSortType, defaultSortDir
+}
+
+// SetDefaultSort sets the package-level default sort type and direction.
+func SetDefaultSort(sortType SortType, sortDir SortDirection) {
+	defaultSortType = sortType
+	defaultSortDir = sortDir
+}
 
 // compareFunc is a generic comparison function following the slices.SortFunc signature.
 type compareFunc[T any] func(a, b T) int
