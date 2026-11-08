@@ -3,9 +3,12 @@ package views
 import (
 	"io/fs"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"charm.land/lipgloss/v2"
 )
 
 func TestFSSorting(t *testing.T) {
@@ -122,4 +125,51 @@ func TestFSSorting(t *testing.T) {
 	// Reset defaults
 	fsv.SetSort(SortByName, SortForward)
 	_ = fs.ValidPath(".")
+}
+
+func TestFSSymlinks(t *testing.T) {
+	t1 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+
+	mapFS := fstest.MapFS{
+		"real_dir":          {Mode: fs.ModeDir | 0755, ModTime: t1},
+		"real_dir/item.txt": {Data: []byte("hello"), ModTime: t1},
+		"real_file.txt":     {Data: []byte("world"), ModTime: t1},
+		"dir_link":          {Data: []byte("real_dir"), Mode: fs.ModeSymlink | 0777, ModTime: t1},
+		"file_link.txt":     {Data: []byte("real_file.txt"), Mode: fs.ModeSymlink | 0777, ModTime: t1},
+	}
+
+	var fsv FS
+	if err := fsv.Init(mapFS, "/", "."); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	names := make([]string, fsv.Len(80))
+	for i := range names {
+		names[i] = fsv.At(i).Name()
+	}
+
+	// dir_link should sort with directories (before file_link.txt and real_file.txt)
+	want := []string{"dir_link", "real_dir", "file_link.txt", "real_file.txt"}
+	if !slices.Equal(names, want) {
+		t.Errorf("symlink sort order = %v, want %v", names, want)
+	}
+
+	if !fsv.IsDir(0) {
+		t.Errorf("expected dir_link IsDir(0) == true")
+	}
+	if fsv.IsDir(2) {
+		t.Errorf("expected file_link.txt IsDir(2) == false")
+	}
+
+	// Wide render should inline " -> real_dir"
+	wideLine := fsv.Render(0, 100, lipgloss.NewStyle())
+	if !strings.Contains(wideLine, " -> ") || !strings.Contains(wideLine, "real_dir") {
+		t.Errorf("expected wide render to include symlink target, got %q", wideLine)
+	}
+
+	// Narrow render where only the name fits should omit " -> "
+	narrowLine := fsv.Render(0, 48, lipgloss.NewStyle())
+	if strings.Contains(narrowLine, " -> ") {
+		t.Errorf("expected narrow render to omit symlink target, got %q", narrowLine)
+	}
 }

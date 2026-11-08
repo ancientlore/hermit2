@@ -48,8 +48,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Right):
 			entry := m.Data.At(m.Cursor())
 			if entry != nil {
-				if entry.IsDir() {
-					newModel, err := New(m.Data.FS(), m.Data.Root(), path.Join(m.Data.Folder(), m.Data.At(m.Cursor()).Name()))
+				if m.Data.IsDir(m.Cursor()) {
+					newModel, err := New(m.Data.FS(), m.Data.Root(), path.Join(m.Data.Folder(), entry.Name()))
 					if err != nil {
 						m.footer = err.Error()
 					} else {

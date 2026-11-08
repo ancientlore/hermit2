@@ -55,10 +55,11 @@ func chainCompare[T any](fns ...compareFunc[T]) compareFunc[T] {
 
 // compareDir sorts directories before non-directories.
 func compareDir(a, b fsEntry) int {
+	ad, bd := a.isDir(), b.isDir()
 	switch {
-	case a.entry.IsDir() && !b.entry.IsDir():
+	case ad && !bd:
 		return -1
-	case !a.entry.IsDir() && b.entry.IsDir():
+	case !ad && bd:
 		return 1
 	default:
 		return 0
@@ -86,7 +87,7 @@ func compareName(a, b fsEntry) int {
 
 // compareExt compares entries by file extension (directories fall back to name).
 func compareExt(a, b fsEntry) int {
-	if a.entry.IsDir() && b.entry.IsDir() {
+	if a.isDir() && b.isDir() {
 		return cmp.Compare(a.entry.Name(), b.entry.Name())
 	}
 	return cmp.Compare(path.Ext(a.entry.Name()), path.Ext(b.entry.Name()))
@@ -94,7 +95,7 @@ func compareExt(a, b fsEntry) int {
 
 // compareSize compares entries by file size (directories sort equal by size).
 func compareSize(a, b fsEntry) int {
-	if a.entry.IsDir() && b.entry.IsDir() {
+	if a.isDir() && b.isDir() {
 		return 0
 	}
 	switch {

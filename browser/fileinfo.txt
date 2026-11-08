@@ -1,6 +1,7 @@
 
-Name:      {{.Name}}{{if .IsDir}} (directory){{end}}
-
+Name:      {{.Name}}{{if .IsDir}} (directory){{else if and .TargetInfo .TargetInfo.IsDir}} (symlink to directory){{end}}
+{{if .LinkTarget}}Link To:   {{.LinkTarget}}
+{{end}}
 Mod Time:  {{.Info.ModTime.Local}}
            {{.Info.ModTime.UTC}}
 

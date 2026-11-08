@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -24,9 +25,18 @@ var (
 )
 
 type fsEntry struct {
-	entry    fs.DirEntry
-	info     fs.FileInfo
-	selected bool
+	entry      fs.DirEntry
+	info       fs.FileInfo
+	targetInfo fs.FileInfo
+	linkTarget string
+	selected   bool
+}
+
+func (e fsEntry) isDir() bool {
+	if e.entry.IsDir() {
+		return true
+	}
+	return e.targetInfo != nil && e.targetInfo.IsDir()
 }
 
 // FS is a viewer for a fs.FS.
@@ -67,6 +77,14 @@ func (fsv FS) At(i int) fs.DirEntry {
 		return fsv.entries[i].entry
 	}
 	return nil
+}
+
+// IsDir returns whether the entry at position i is a directory or a symlink to a directory.
+func (fsv FS) IsDir(i int) bool {
+	if i >= 0 && i < len(fsv.entries) {
+		return fsv.entries[i].isDir()
+	}
+	return false
 }
 
 // Selected returns whether the entry at position i is selected.
@@ -127,7 +145,7 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 	}
 
 	ns := normal
-	if choice.IsDir() {
+	if item.isDir() {
 		ns = bold
 		if strings.HasPrefix(choice.Name(), ".") {
 			ns = specialbold
@@ -136,6 +154,8 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 		ns = special
 	}
 	ns = ns.Background(baseStyle.GetBackground())
+	ps := normal.Background(baseStyle.GetBackground())
+	es := ellipsis.Background(baseStyle.GetBackground())
 
 	// Render the row
 	var prefix string
@@ -147,14 +167,46 @@ func (fsv FS) Render(i, width int, baseStyle lipgloss.Style) string {
 		if t.Year() < n.Year() {
 			format = timeFormatOld
 		}
-		prefix = fmt.Sprintf("%s %11s %10d %s ", checked, info.Mode(), info.Size(), info.ModTime().Format(format))
+		modeStr := fmt.Sprintf("%11s", info.Mode())
+		rest := fmt.Sprintf(" %10d %s ", info.Size(), info.ModTime().Format(format))
+		prefix = ps.Render(checked+" ") + renderMode(modeStr, es, ps) + ps.Render(rest)
 	} else {
-		prefix = fmt.Sprintf("%s %11s %10d %s ", checked, "?", 0, "")
+		prefix = ps.Render(fmt.Sprintf("%s %11s %10d %s ", checked, "?", 0, ""))
 	}
 
-	es := ellipsis.Background(baseStyle.GetBackground())
-	name := renderName(choice.Name(), width-lipgloss.Width(prefix), ns, es)
+	availWidth := width - lipgloss.Width(prefix)
+	name := renderName(choice.Name(), availWidth, ns, es)
+	if item.linkTarget != "" {
+		const arrow = " -> "
+		rem := availWidth - lipgloss.Width(choice.Name()) - len(arrow)
+		if rem >= lipgloss.Width(item.linkTarget) || rem >= 7 {
+			ts := special.Background(baseStyle.GetBackground())
+			name += es.Render(arrow) + renderName(item.linkTarget, rem, ts, es)
+		}
+	}
 	return baseStyle.Render(prefix + name)
+}
+
+func renderMode(modeStr string, highlightStyle, plainStyle lipgloss.Style) string {
+	var out strings.Builder
+	var plain strings.Builder
+	flushPlain := func() {
+		if plain.Len() > 0 {
+			out.WriteString(plainStyle.Render(plain.String()))
+			plain.Reset()
+		}
+	}
+	for _, r := range modeStr {
+		switch r {
+		case 'd', 'L':
+			flushPlain()
+			out.WriteString(highlightStyle.Render(string(r)))
+		default:
+			plain.WriteRune(r)
+		}
+	}
+	flushPlain()
+	return out.String()
 }
 
 func renderName(s string, maxWidth int, nameStyle, ellipsisStyle lipgloss.Style) string {
@@ -214,9 +266,18 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 	fsv.allEntries = make([]fsEntry, len(dirEntries))
 	for i, entry := range dirEntries {
 		info, _ := entry.Info()
+		var targetInfo fs.FileInfo
+		var linkTarget string
+		if entry.Type()&fs.ModeSymlink != 0 {
+			entryPath := path.Join(rf, entry.Name())
+			targetInfo, _ = fs.Stat(fsys, entryPath)
+			linkTarget, _ = fs.ReadLink(fsys, entryPath)
+		}
 		fsv.allEntries[i] = fsEntry{
-			entry: entry,
-			info:  info,
+			entry:      entry,
+			info:       info,
+			targetInfo: targetInfo,
+			linkTarget: linkTarget,
 		}
 	}
 	fsv.root = root

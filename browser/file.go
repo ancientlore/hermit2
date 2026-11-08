@@ -14,14 +14,27 @@ import (
 	"strings"
 	"text/template"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/ancientlore/hermit2/scroller"
 	"github.com/ancientlore/hermit2/views"
-	tea "charm.land/bubbletea/v2"
 )
 
-func NewFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
+func isViewableFile(fsys fs.FS, fullPath string, entry fs.DirEntry) bool {
 	if entry.Type().IsRegular() {
-		f, err := fs.Open(path.Join(strings.TrimPrefix(folder, "/"), entry.Name()))
+		return true
+	}
+	if entry.Type()&fs.ModeSymlink != 0 {
+		if info, err := fs.Stat(fsys, fullPath); err == nil {
+			return info.Mode().IsRegular()
+		}
+	}
+	return false
+}
+
+func NewFileModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
+	fullPath := path.Join(strings.TrimPrefix(folder, "/"), entry.Name())
+	if isViewableFile(fsys, fullPath, entry) {
+		f, err := fsys.Open(fullPath)
 		if err != nil {
 			return nil, err
 		}
@@ -66,9 +79,10 @@ func NewFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (t
 }
 
 // NewBinaryFileModel creates a new model to view a file as bytes.
-func NewBinaryFileModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
-	if entry.Type().IsRegular() {
-		f, err := fs.Open(path.Join(strings.TrimPrefix(folder, "/"), entry.Name()))
+func NewBinaryFileModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
+	fullPath := path.Join(strings.TrimPrefix(folder, "/"), entry.Name())
+	if isViewableFile(fsys, fullPath, entry) {
+		f, err := fsys.Open(fullPath)
 		if err != nil {
 			return nil, err
 		}
@@ -185,10 +199,22 @@ var templates = template.Must(
 	}).ParseFS(templateFs, "*.txt"),
 )
 
+type fileInfoData struct {
+	fs.DirEntry
+	LinkTarget string
+	TargetInfo fs.FileInfo
+}
+
 // NewFileInfoModel creates a new model to view file information.
-func NewFileInfoModel(fs fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
+func NewFileInfoModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
+	data := fileInfoData{DirEntry: entry}
+	if entry.Type()&fs.ModeSymlink != 0 {
+		fullPath := path.Join(strings.TrimPrefix(folder, "/"), entry.Name())
+		data.LinkTarget, _ = fs.ReadLink(fsys, fullPath)
+		data.TargetInfo, _ = fs.Stat(fsys, fullPath)
+	}
 	var wtr bytes.Buffer
-	err := templates.ExecuteTemplate(&wtr, "fileinfo.txt", entry)
+	err := templates.ExecuteTemplate(&wtr, "fileinfo.txt", data)
 	if err != nil {
 		log.Print(err)
 		return nil, err

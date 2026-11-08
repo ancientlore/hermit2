@@ -33,7 +33,7 @@ func (fsv *FS) applyFilter() {
 		item := &fsv.allEntries[i]
 		// Directories are always shown in the listing even when filtered,
 		// matching the original C++ Directory::readDir behavior.
-		if item.entry.IsDir() || matchFilter(fsv.filter, item.entry.Name()) {
+		if item.isDir() || matchFilter(fsv.filter, item.entry.Name()) {
 			visible = append(visible, *item)
 		} else {
 			// Deselect items that are not visible when filtered.
