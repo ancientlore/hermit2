@@ -112,6 +112,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Filter):
 			return NewFilterDialogModel(m), nil
 
+		case key.Matches(msg, DefaultKeyMap.Goto):
+			return NewGotoDialogModel(m), nil
+
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
 		case key.Matches(msg, DefaultKeyMap.ToggleSelect):

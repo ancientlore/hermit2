@@ -17,6 +17,7 @@ type Options struct {
 	SortDirection views.SortDirection `toml:"sort_direction"`
 	Filter        string              `toml:"filter"`
 	FilterHistory []string            `toml:"filter_history"`
+	GotoHistory   []string            `toml:"goto_history"`
 }
 
 var activeOptionsPath string
@@ -28,6 +29,7 @@ func DefaultOptions() Options {
 		SortDirection: views.SortForward,
 		Filter:        "",
 		FilterHistory: nil,
+		GotoHistory:   nil,
 	}
 }
 

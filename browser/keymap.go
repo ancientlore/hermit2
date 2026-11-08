@@ -12,6 +12,7 @@ type KeyMap struct {
 	DeSelectAll  key.Binding
 	RunShell     key.Binding
 	GoHome       key.Binding
+	Goto         key.Binding
 	Refresh      key.Binding
 	Sort         key.Binding
 	Filter       key.Binding
@@ -56,6 +57,10 @@ var DefaultKeyMap = KeyMap{
 	GoHome: key.NewBinding(
 		key.WithKeys("~", "alt+h", "ctrl+h"),
 		key.WithHelp("~/alt+h/ctrl+h", "navigate to home folder"),
+	),
+	Goto: key.NewBinding(
+		key.WithKeys("alt+g", "ctrl+g", "f6"),
+		key.WithHelp("alt+g/ctrl+g/f6", "go to folder"),
 	),
 	Refresh: key.NewBinding(
 		key.WithKeys("alt+r", "ctrl+r", "f5"),

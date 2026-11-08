@@ -28,8 +28,9 @@ func TestOptionsPersistence(t *testing.T) {
 	t1 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2025, 2, 1, 10, 0, 0, 0, time.UTC)
 	mapFS := fstest.MapFS{
-		"small.txt": {Data: []byte("a"), ModTime: t2},
-		"large.go":  {Data: []byte("abcdef"), ModTime: t1},
+		"small.txt":     {Data: []byte("a"), ModTime: t2},
+		"large.go":      {Data: []byte("abcdef"), ModTime: t1},
+		"sub/inside.go": {Data: []byte("package sub"), ModTime: t1},
 	}
 
 	bm, err := New(mapFS, "/", ".")
@@ -55,7 +56,14 @@ func TestOptionsPersistence(t *testing.T) {
 	mod, _ = filtDlg.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = mod.(Model)
 
-	// 3. Verify options.toml on disk reflects the updated sort, filter, and filter history
+	// 2b. Navigate to "sub" via GotoDialogModel and press Enter
+	gotoDlg := NewGotoDialogModel(m)
+	mod, _ = gotoDlg.Update(tea.KeyPressMsg{Code: 's', Text: "sub"})
+	gotoDlg = mod.(GotoDialogModel)
+	mod, _ = gotoDlg.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = mod.(Model)
+
+	// 3. Verify options.toml on disk reflects the updated sort, filter, filter history, and goto history
 	persisted, err := config.LoadOptionsFrom(optsPath)
 	if err != nil {
 		t.Fatalf("LoadOptionsFrom failed: %v", err)
@@ -68,6 +76,9 @@ func TestOptionsPersistence(t *testing.T) {
 	}
 	if !slices.Equal(persisted.FilterHistory, []string{"*.go"}) {
 		t.Errorf("expected persisted filter history [*.go], got %v", persisted.FilterHistory)
+	}
+	if !slices.Equal(persisted.GotoHistory, []string{"/sub"}) {
+		t.Errorf("expected persisted goto history [/sub], got %v", persisted.GotoHistory)
 	}
 
 	// 4. Simulate a fresh startup by resetting in-memory defaults and re-applying persisted options
@@ -84,8 +95,11 @@ func TestOptionsPersistence(t *testing.T) {
 	if reloadedBM.Data.Filter() != "*.go" || reloadedBM.HeaderTail != "*.go" {
 		t.Errorf("reloaded browser filter mismatch: filter=%q headerTail=%q", reloadedBM.Data.Filter(), reloadedBM.HeaderTail)
 	}
-	if reloadedBM.Data.Len(80) != 1 || reloadedBM.Data.At(0).Name() != "large.go" {
-		t.Errorf("expected only large.go visible after reload, got len=%d", reloadedBM.Data.Len(80))
+	if reloadedBM.Data.Len(80) != 2 || reloadedBM.Data.At(0).Name() != "sub" || reloadedBM.Data.At(1).Name() != "large.go" {
+		t.Errorf("expected sub and large.go visible after reload, got len=%d", reloadedBM.Data.Len(80))
+	}
+	if !slices.Equal(gotoHistory.Items(), []string{"/sub"}) {
+		t.Errorf("expected reloaded gotoHistory [/sub], got %v", gotoHistory.Items())
 	}
 }
 

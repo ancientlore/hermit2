@@ -29,6 +29,7 @@ func TestOptionsLoadAndSave(t *testing.T) {
 		SortDirection: views.SortReverse,
 		Filter:        "*.go;*.md",
 		FilterHistory: []string{"*.go;*.md", "*.txt"},
+		GotoHistory:   []string{"/projects/hermit2", "/tmp"},
 	}
 	if err := SaveOptionsTo(optsPath, want); err != nil {
 		t.Fatalf("SaveOptionsTo failed: %v", err)
@@ -53,7 +54,7 @@ func TestOptionsLoadAndSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadOptionsFrom failed: %v", err)
 	}
-	if got.SortBy != want.SortBy || got.SortDirection != want.SortDirection || got.Filter != want.Filter || !slices.Equal(got.FilterHistory, want.FilterHistory) {
+	if got.SortBy != want.SortBy || got.SortDirection != want.SortDirection || got.Filter != want.Filter || !slices.Equal(got.FilterHistory, want.FilterHistory) || !slices.Equal(got.GotoHistory, want.GotoHistory) {
 		t.Errorf("round-trip mismatch:\ngot:  %+v\nwant: %+v", got, want)
 	}
 }

@@ -150,6 +150,26 @@ func (e Edit) Value() string {
 	return string(e.text)
 }
 
+// SetValue replaces the edit buffer with s and places the cursor at the end.
+func (e *Edit) SetValue(s string) {
+	runes := []rune(s)
+	if e.maxLength > 0 && len(runes) > e.maxLength {
+		runes = runes[:e.maxLength]
+	}
+	e.text = runes
+	e.textCursor = len(runes)
+	e.windowCursor = len(runes)
+	if e.width > 0 && e.windowCursor > e.width-1 {
+		e.windowCursor = e.width - 1
+	}
+	e.histIndex = -1
+}
+
+// AtEnd reports whether the text cursor is positioned at the end of the buffer.
+func (e Edit) AtEnd() bool {
+	return e.textCursor >= len(e.text)
+}
+
 // Accept commits the current text to the history buffer (if non-empty) and returns it.
 func (e *Edit) Accept() string {
 	val := string(e.text)
