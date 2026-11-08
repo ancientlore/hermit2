@@ -31,12 +31,14 @@ type fsEntry struct {
 
 // FS is a viewer for a fs.FS.
 type FS struct {
-	fsys     fs.FS         // The filesystem being browsed
-	root     string        // The name for the root of the file system
-	folder   string        // The current folder in the file system
-	entries  []fsEntry     // The list of directory entries read
-	sortType SortType      // Current sort type
-	sortDir  SortDirection // Current sort direction
+	fsys       fs.FS         // The filesystem being browsed
+	root       string        // The name for the root of the file system
+	folder     string        // The current folder in the file system
+	allEntries []fsEntry     // All directory entries read from the folder
+	entries    []fsEntry     // Visible (filtered and sorted) directory entries
+	sortType   SortType      // Current sort type
+	sortDir    SortDirection // Current sort direction
+	filter     string        // Current wildcard file filter
 }
 
 // Title returns the full name of the current folder.
@@ -79,13 +81,25 @@ func (fsv FS) Selected(i int) bool {
 func (fsv *FS) Select(i int, b bool) {
 	if i >= 0 && i < len(fsv.entries) {
 		fsv.entries[i].selected = b
+		fsv.setAllEntrySelected(fsv.entries[i].entry.Name(), b)
 	}
 }
 
 // ToggleSelect toggles the selected flag at position i.
 func (fsv *FS) ToggleSelect(i int) {
 	if i >= 0 && i < len(fsv.entries) {
-		fsv.entries[i].selected = !fsv.entries[i].selected
+		b := !fsv.entries[i].selected
+		fsv.entries[i].selected = b
+		fsv.setAllEntrySelected(fsv.entries[i].entry.Name(), b)
+	}
+}
+
+func (fsv *FS) setAllEntrySelected(name string, b bool) {
+	for i := range fsv.allEntries {
+		if fsv.allEntries[i].entry.Name() == name {
+			fsv.allEntries[i].selected = b
+			return
+		}
 	}
 }
 
@@ -197,10 +211,10 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 		return err
 	}
 
-	fsv.entries = make([]fsEntry, len(dirEntries))
+	fsv.allEntries = make([]fsEntry, len(dirEntries))
 	for i, entry := range dirEntries {
 		info, _ := entry.Info()
-		fsv.entries[i] = fsEntry{
+		fsv.allEntries[i] = fsEntry{
 			entry: entry,
 			info:  info,
 		}
@@ -210,8 +224,9 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 	fsv.fsys = fsys
 	fsv.sortType = defaultSortType
 	fsv.sortDir = defaultSortDir
+	fsv.filter = defaultFilter
 
-	fsv.Sort()
+	fsv.applyFilter()
 
 	return nil
 }

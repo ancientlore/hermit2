@@ -69,7 +69,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Left):
 			if m.Prev != nil {
 				if prevBrowser, ok := m.Prev.(Model); ok {
+					prevBrowser.Data.SyncFilter()
 					prevBrowser.Data.SyncSort()
+					prevBrowser.HeaderTail = prevBrowser.Data.Filter()
+					prevBrowser.MoveCursor(0)
 					return prevBrowser, sizeCmd
 				}
 				return m.Prev, sizeCmd
@@ -105,6 +108,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, DefaultKeyMap.Sort):
 			return NewSortDialogModel(m), nil
+
+		case key.Matches(msg, DefaultKeyMap.Filter):
+			return NewFilterDialogModel(m), nil
 
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
@@ -203,5 +209,6 @@ func New(fsys fs.FS, root, folder string) (*Model, error) {
 		return nil, err
 	}
 	m.Header = m.Data.Title()
+	m.HeaderTail = m.Data.Filter()
 	return &m, nil
 }

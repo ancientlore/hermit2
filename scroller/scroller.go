@@ -9,16 +9,18 @@ import (
 )
 
 var (
-	header    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
-	footer    = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
-	normal    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	highlight = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
-	ellipsis  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#888B7E"))
+	header     = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	headerTail = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#888B7E"))
+	footer     = lipgloss.NewStyle().Background(lipgloss.Color("#888B7E"))
+	normal     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	highlight  = lipgloss.NewStyle().Background(lipgloss.Color("#7D56F4"))
+	ellipsis   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#888B7E"))
 )
 
 // Model implements scrolling behavior over a Viewer.
 type Model[T Viewer] struct {
 	Header         string         // Header text
+	HeaderTail     string         // Right-aligned header text (e.g. active filter)
 	Data           T              // The view we are using
 	Prev           tea.Model      // The previous model (for going back)
 	cursor         int            // Current position of cursor
@@ -97,18 +99,7 @@ func (m Model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // by the class embedding the scroller.
 func (m Model[T]) View() tea.View {
 	// Header
-	hdr := m.Header
-	if m.width > 3 && lipgloss.Width(hdr) > m.width {
-		r := []rune(hdr)
-		if len(r) > m.width-3 {
-			r = r[len(r)-(m.width-3):]
-		}
-		for len(r) > 0 && lipgloss.Width(string(r))+3 > m.width {
-			r = r[1:]
-		}
-		hdr = ellipsis.Render("...") + header.Render(string(r))
-	}
-	s := header.Width(m.width).Height(1).MaxWidth(m.width).Render(hdr) + "\n"
+	s := m.renderHeader() + "\n"
 
 	// Viewport
 	lines := 0
@@ -173,6 +164,56 @@ func (m Model[T]) Width() int {
 // Height returns the height of the view.
 func (m Model[T]) Height() int {
 	return m.height + 2
+}
+
+// renderHeader formats the top header bar, including an optional right-aligned HeaderTail.
+func (m Model[T]) renderHeader() string {
+	tail := m.HeaderTail
+	if tail != "" {
+		// Limit tail to at most 20 columns, matching original C++ TitleBar::setTitleTail
+		r := []rune(tail)
+		if len(r) > 20 {
+			r = r[:20]
+		}
+		for len(r) > 0 && lipgloss.Width(string(r)) > 20 {
+			r = r[:len(r)-1]
+		}
+		tail = string(r)
+	}
+	tailWidth := lipgloss.Width(tail)
+	availWidth := m.width
+	if tailWidth > 0 && m.width > tailWidth+1 {
+		availWidth = m.width - tailWidth - 1
+	} else if tailWidth > 0 {
+		tail = ""
+		tailWidth = 0
+	}
+
+	hdr := m.Header
+	if availWidth > 3 && lipgloss.Width(hdr) > availWidth {
+		r := []rune(hdr)
+		if len(r) > availWidth-3 {
+			r = r[len(r)-(availWidth-3):]
+		}
+		for len(r) > 0 && lipgloss.Width(string(r))+3 > availWidth {
+			r = r[1:]
+		}
+		hdr = ellipsis.Render("...") + header.Render(string(r))
+	} else {
+		hdr = header.Render(hdr)
+	}
+
+	if tailWidth == 0 {
+		return header.Width(m.width).Height(1).MaxWidth(m.width).Render(hdr)
+	}
+
+	hdrWidth := lipgloss.Width(hdr)
+	pad := m.width - hdrWidth - tailWidth
+	if pad < 1 {
+		pad = 1
+	}
+	line := hdr + header.Render(strings.Repeat(" ", pad)) + headerTail.Render(tail)
+	return header.Width(m.width).Height(1).MaxWidth(m.width).Render(line)
 }
 
 // lineHeight returns the rendered visual height of line i.

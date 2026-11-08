@@ -14,6 +14,7 @@ type KeyMap struct {
 	GoHome       key.Binding
 	Refresh      key.Binding
 	Sort         key.Binding
+	Filter       key.Binding
 	Help         key.Binding
 	ViewBinary   key.Binding
 	FileInfo     key.Binding
@@ -63,6 +64,10 @@ var DefaultKeyMap = KeyMap{
 	Sort: key.NewBinding(
 		key.WithKeys("alt+s", "ctrl+s"),
 		key.WithHelp("alt+s/ctrl+s", "sort directory listing"),
+	),
+	Filter: key.NewBinding(
+		key.WithKeys("alt+f", "ctrl+f"),
+		key.WithHelp("alt+f/ctrl+f", "filter directory listing"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("alt+h", "ctrl+h", "?"),

@@ -27,6 +27,7 @@ Commands in the main browser:
 
     {{with .BrowserKeys.Refresh.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
     {{with .BrowserKeys.Sort.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
+    {{with .BrowserKeys.Filter.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
     {{with .BrowserKeys.GoHome.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
     {{with .BrowserKeys.RunShell.Help}}{{printf "%-16s  %s" .Key .Desc}}{{end}}
 
