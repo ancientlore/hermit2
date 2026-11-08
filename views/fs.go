@@ -198,9 +198,9 @@ func renderMode(modeStr string, highlightStyle, plainStyle lipgloss.Style) strin
 	}
 	for _, r := range modeStr {
 		switch r {
-		case 'd', 'L':
+		case 'L':
 			flushPlain()
-			out.WriteString(highlightStyle.Render(string(r)))
+			out.WriteString(highlightStyle.Render("L"))
 		default:
 			plain.WriteRune(r)
 		}
