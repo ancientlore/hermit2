@@ -236,7 +236,8 @@ var templates = template.Must(
 		"mime": func(name string) string {
 			return mime.TypeByExtension(path.Ext(name))
 		},
-		"owner": owner,
+		"owner":   owner,
+		"sysinfo": sysInfo,
 	}).ParseFS(templateFs, "*.txt"),
 )
 
