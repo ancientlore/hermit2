@@ -5,11 +5,21 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
 )
+
+// IsLinkLike reports whether mode represents a symbolic link, or on Windows
+// an irregular file (such as an NTFS directory junction or reparse point).
+func IsLinkLike(mode fs.FileMode) bool {
+	if runtime.GOOS == "windows" {
+		return mode&(fs.ModeSymlink|fs.ModeIrregular) != 0
+	}
+	return mode&fs.ModeSymlink != 0
+}
 
 const (
 	timeFormatOld = "Mon Jan _2  2006"
@@ -79,12 +89,20 @@ func (fsv FS) At(i int) fs.DirEntry {
 	return nil
 }
 
-// IsDir returns whether the entry at position i is a directory or a symlink to a directory.
+// IsDir returns whether the entry at position i is a directory or a link to a directory.
 func (fsv FS) IsDir(i int) bool {
 	if i >= 0 && i < len(fsv.entries) {
 		return fsv.entries[i].isDir()
 	}
 	return false
+}
+
+// LinkTarget returns the link target for the entry at position i, if any.
+func (fsv FS) LinkTarget(i int) string {
+	if i >= 0 && i < len(fsv.entries) {
+		return fsv.entries[i].linkTarget
+	}
+	return ""
 }
 
 // Selected returns whether the entry at position i is selected.
@@ -198,9 +216,9 @@ func renderMode(modeStr string, highlightStyle, plainStyle lipgloss.Style) strin
 	}
 	for _, r := range modeStr {
 		switch r {
-		case 'L':
+		case 'L', '?':
 			flushPlain()
-			out.WriteString(highlightStyle.Render("L"))
+			out.WriteString(highlightStyle.Render(string(r)))
 		default:
 			plain.WriteRune(r)
 		}
@@ -268,7 +286,7 @@ func (fsv *FS) Init(fsys fs.FS, root, folder string) error {
 		info, _ := entry.Info()
 		var targetInfo fs.FileInfo
 		var linkTarget string
-		if entry.Type()&fs.ModeSymlink != 0 {
+		if IsLinkLike(entry.Type()) {
 			entryPath := path.Join(rf, entry.Name())
 			targetInfo, _ = fs.Stat(fsys, entryPath)
 			linkTarget, _ = fs.ReadLink(fsys, entryPath)

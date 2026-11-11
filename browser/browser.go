@@ -51,6 +51,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.Data.IsDir(m.Cursor()) {
 					newModel, err := New(m.Data.FS(), m.Data.Root(), path.Join(m.Data.Folder(), entry.Name()))
 					if err != nil {
+						if linkTarget := m.Data.LinkTarget(m.Cursor()); linkTarget != "" {
+							g := GotoDialogModel{parent: m}
+							if targetModel, targetErr := g.navigate(linkTarget); targetErr == nil {
+								newModel, err = targetModel, nil
+							}
+						}
+					}
+					if err != nil {
 						m.footer = err.Error()
 					} else {
 						newModel.Prev = m

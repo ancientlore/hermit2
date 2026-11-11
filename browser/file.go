@@ -23,7 +23,7 @@ func isViewableFile(fsys fs.FS, fullPath string, entry fs.DirEntry) bool {
 	if entry.Type().IsRegular() {
 		return true
 	}
-	if entry.Type()&fs.ModeSymlink != 0 {
+	if views.IsLinkLike(entry.Type()) {
 		if info, err := fs.Stat(fsys, fullPath); err == nil {
 			return info.Mode().IsRegular()
 		}
@@ -249,7 +249,7 @@ type fileInfoData struct {
 // NewFileInfoModel creates a new model to view file information.
 func NewFileInfoModel(fsys fs.FS, folder string, entry fs.DirEntry, prev tea.Model) (tea.Model, error) {
 	data := fileInfoData{DirEntry: entry}
-	if entry.Type()&fs.ModeSymlink != 0 {
+	if views.IsLinkLike(entry.Type()) {
 		fullPath := path.Join(strings.TrimPrefix(folder, "/"), entry.Name())
 		data.LinkTarget, _ = fs.ReadLink(fsys, fullPath)
 		data.TargetInfo, _ = fs.Stat(fsys, fullPath)

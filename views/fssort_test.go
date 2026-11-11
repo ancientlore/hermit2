@@ -157,6 +157,9 @@ func TestFSSymlinks(t *testing.T) {
 	if !fsv.IsDir(0) {
 		t.Errorf("expected dir_link IsDir(0) == true")
 	}
+	if got := fsv.LinkTarget(0); got != "real_dir" {
+		t.Errorf("expected dir_link LinkTarget(0) == %q, got %q", "real_dir", got)
+	}
 	if fsv.IsDir(2) {
 		t.Errorf("expected file_link.txt IsDir(2) == false")
 	}

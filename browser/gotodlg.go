@@ -14,6 +14,7 @@ import (
 	"github.com/ancientlore/hermit2/config"
 	"github.com/ancientlore/hermit2/popup"
 	"github.com/ancientlore/hermit2/scroller"
+	"github.com/ancientlore/hermit2/views"
 )
 
 const (
@@ -555,7 +556,7 @@ func isDirEntry(fsys fs.FS, dir string, e fs.DirEntry) bool {
 	if e.IsDir() {
 		return true
 	}
-	if e.Type()&fs.ModeSymlink != 0 && fsys != nil {
+	if views.IsLinkLike(e.Type()) && fsys != nil {
 		if info, err := fs.Stat(fsys, path.Join(dir, e.Name())); err == nil && info.IsDir() {
 			return true
 		}
@@ -614,7 +615,21 @@ func (m *GotoDialogModel) resolveFSAndFolder(resolvedPath string) (fsys fs.FS, f
 func (m *GotoDialogModel) navigate(rawTarget string) (*Model, error) {
 	resolved := m.resolveDirPath(rawTarget)
 	fsys, fsRoot, folder, _ := m.resolveFSAndFolder(resolved)
-	return New(fsys, fsRoot, folder)
+	mod, err := New(fsys, fsRoot, folder)
+	if err != nil {
+		rf := strings.TrimPrefix(folder, "/")
+		if rf == "" {
+			rf = "."
+		}
+		if target, rlErr := fs.ReadLink(fsys, rf); rlErr == nil && target != "" {
+			resolvedTarget := m.resolveDirPath(target)
+			tFS, tRoot, tFolder, _ := m.resolveFSAndFolder(resolvedTarget)
+			if tMod, tErr := New(tFS, tRoot, tFolder); tErr == nil {
+				return tMod, nil
+			}
+		}
+	}
+	return mod, err
 }
 
 func truncateMiddle(s string, maxWidth int) string {
