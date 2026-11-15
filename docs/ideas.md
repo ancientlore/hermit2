@@ -12,3 +12,17 @@
 
 
     }
+
+TODO:
+
+- Configure shell that launches with $
+- Add themes and config for them
+    - Greyscale
+    - Amber monitor
+    - Green monitor
+    - Other common styles (light, dark, high contrast)
+- Add configurable commands (gscript)
+    - What do the variables look like?
+- Add more browsable type (s3, etc.)
+- Add "workspaces" which used to be bookmarks
+
