@@ -25,4 +25,4 @@ TODO:
     - What do the variables look like?
 - Add more browsable type (s3, etc.)
 - Add "workspaces" which used to be bookmarks
-
+- Search feature in the text viewer / n p
